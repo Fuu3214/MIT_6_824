@@ -1,7 +1,12 @@
 package mapreduce
 
 import (
+	"encoding/json"
 	"hash/fnv"
+	"io/ioutil"
+	"log"
+	"os"
+	"sync"
 )
 
 func doMap(
@@ -53,6 +58,41 @@ func doMap(
 	//
 	// Your code here (Part I).
 	//
+
+	//Read file
+	content, err := ioutil.ReadFile(inFile)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	//call mapF, in map fileName is ignored
+	kvPairs := mapF(inFile, string(content))
+
+	//partition kvPairs according to hash value. Let's try with gophers
+	var wg sync.WaitGroup
+	for i := 0; i < nReduce; i++ {
+
+		go func(reduceTask int) {
+			defer wg.Done()
+			//create json
+			fileName := reduceName(jobName, mapTask, reduceTask)
+			file, _ := os.Create(fileName)
+			defer file.Close()
+
+			enc := json.NewEncoder(file)
+			for _, kvPair := range kvPairs {
+				if ihash(kvPair.Key)%nReduce == reduceTask {
+					err := enc.Encode(&kvPair)
+					if err != nil {
+						log.Fatal("encode error:", err)
+					}
+				}
+			}
+		}(i)
+	}
+	wg.Add(nReduce)
+	wg.Wait()
+
 }
 
 func ihash(s string) int {

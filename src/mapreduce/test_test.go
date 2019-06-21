@@ -122,7 +122,7 @@ func makeInputs(num int) []string {
 func port(suffix string) string {
 	s := "/var/tmp/824-"
 	s += strconv.Itoa(os.Getuid()) + "/"
-	os.Mkdir(s, 0777)
+	os.MkdirAll(s, os.ModePerm)
 	s += "mr"
 	s += strconv.Itoa(os.Getpid()) + "-"
 	s += suffix

@@ -1,5 +1,12 @@
 package mapreduce
 
+import (
+	"encoding/json"
+	"os"
+	"sort"
+	"sync"
+)
+
 func doReduce(
 	jobName string, // the name of the whole MapReduce job
 	reduceTask int, // which reduce task this is
@@ -44,4 +51,52 @@ func doReduce(
 	//
 	// Your code here (Part I).
 	//
+
+	//let's try with gophers
+	ch := make(chan *KeyValue, 5)
+	var wg sync.WaitGroup
+	wg.Add(nMap)
+	for i := 0; i < nMap; i++ {
+		go func(mapTask int) {
+			defer wg.Done()
+			file, _ := os.Open(reduceName(jobName, mapTask, reduceTask))
+			defer file.Close()
+
+			dec := json.NewDecoder(file)
+			for {
+				var kv KeyValue
+				err := dec.Decode(&kv)
+				if err != nil {
+					break
+				}
+				ch <- &kv
+			}
+		}(i)
+	}
+	go func() {
+		wg.Wait()
+		close(ch)
+	}()
+
+	kvs := make(map[string][]string, 0)
+	keys := make([]string, 0)
+	for kv := range ch {
+		_, ok := kvs[kv.Key]
+		if !ok {
+			keys = append(keys, kv.Key)
+			kvs[kv.Key] = make([]string, 0)
+		}
+		kvs[kv.Key] = append(kvs[kv.Key], kv.Value)
+	}
+	sort.Strings(keys)
+
+	//write to outFile
+	file, _ := os.Create(outFile)
+	defer file.Close()
+
+	enc := json.NewEncoder(file)
+	for _, key := range keys {
+		enc.Encode(&KeyValue{key, reduceF(key, kvs[key])})
+	}
+
 }
