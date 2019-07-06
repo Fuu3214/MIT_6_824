@@ -17,13 +17,13 @@ package raft
 //   in the same server.
 //
 
-import "sync"
-import "labrpc"
+import (
+	"labrpc"
+	"sync"
+)
 
 // import "bytes"
 // import "labgob"
-
-
 
 //
 // as each Raft peer becomes aware that successive log entries are
@@ -49,24 +49,80 @@ type Raft struct {
 	mu        sync.Mutex          // Lock to protect shared access to this peer's state
 	peers     []*labrpc.ClientEnd // RPC end points of all peers
 	persister *Persister          // Object to hold this peer's persisted state
-	me        int                 // this peer's index into peers[]
 
+	id       int // this peer's index into peers[]
+	leaderID int
+	state    serverState
 	// Your data here (2A, 2B, 2C).
 	// Look at the paper's Figure 2 for a description of what
 	// state a Raft server must maintain.
 
+	//persistent states
+	currentTerm int
+	votedFor    int
+	log         []RaftLog
+
+	//volatile states
+	commitIndex int
+	lastApplied int
+
+	//volatile states for leaders
+	nextIndex  []int
+	matchIndex []int
+
+	//channel for communication
+	heartBeatSignal chan struct{}
+	staleSignal     chan struct{}
+	// doneStaleSignal chan struct{} // ensure only one signal can be effective
+	staleState bool
 }
 
-// return currentTerm and whether this server
+// type heartBeatMsg struct {
+// 	term     int
+// 	serverID int
+// }
+
+type RaftLog struct {
+	Term int
+}
+
+// GetState returns currentTerm and whether this server
 // believes it is the leader.
 func (rf *Raft) GetState() (int, bool) {
 
 	var term int
 	var isleader bool
 	// Your code here (2A).
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+
+	term = rf.currentTerm
+	isleader = (rf.state == LEADER)
+
 	return term, isleader
 }
 
+func (rf *Raft) setLog(idx int, value *RaftLog) {
+	rf.log[idx] = *value
+}
+func (rf *Raft) getLog(idx int) *RaftLog {
+	return &rf.log[idx]
+}
+func (rf *Raft) getLogs(fromIdx int, toIdx int) []RaftLog {
+	return rf.log[fromIdx:toIdx]
+}
+func (rf *Raft) logLen() int {
+	return len(rf.log)
+}
+func (rf *Raft) getLastLogIndex() int {
+	return len(rf.log) - 1
+}
+func (rf *Raft) getLastLogTerm() int {
+	return rf.log[rf.getLastLogIndex()].Term
+}
+func (rf *Raft) numServer() int {
+	return len(rf.peers)
+}
 
 //
 // save Raft's persistent state to stable storage,
@@ -83,7 +139,6 @@ func (rf *Raft) persist() {
 	// data := w.Bytes()
 	// rf.persister.SaveRaftState(data)
 }
-
 
 //
 // restore previously persisted state.
@@ -107,67 +162,6 @@ func (rf *Raft) readPersist(data []byte) {
 	// }
 }
 
-
-
-
-//
-// example RequestVote RPC arguments structure.
-// field names must start with capital letters!
-//
-type RequestVoteArgs struct {
-	// Your data here (2A, 2B).
-}
-
-//
-// example RequestVote RPC reply structure.
-// field names must start with capital letters!
-//
-type RequestVoteReply struct {
-	// Your data here (2A).
-}
-
-//
-// example RequestVote RPC handler.
-//
-func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
-	// Your code here (2A, 2B).
-}
-
-//
-// example code to send a RequestVote RPC to a server.
-// server is the index of the target server in rf.peers[].
-// expects RPC arguments in args.
-// fills in *reply with RPC reply, so caller should
-// pass &reply.
-// the types of the args and reply passed to Call() must be
-// the same as the types of the arguments declared in the
-// handler function (including whether they are pointers).
-//
-// The labrpc package simulates a lossy network, in which servers
-// may be unreachable, and in which requests and replies may be lost.
-// Call() sends a request and waits for a reply. If a reply arrives
-// within a timeout interval, Call() returns true; otherwise
-// Call() returns false. Thus Call() may not return for a while.
-// A false return can be caused by a dead server, a live server that
-// can't be reached, a lost request, or a lost reply.
-//
-// Call() is guaranteed to return (perhaps after a delay) *except* if the
-// handler function on the server side does not return.  Thus there
-// is no need to implement your own timeouts around Call().
-//
-// look at the comments in ../labrpc/labrpc.go for more details.
-//
-// if you're having trouble getting RPC to work, check that you've
-// capitalized all field names in structs passed over RPC, and
-// that the caller passes the address of the reply struct with &, not
-// the struct itself.
-//
-func (rf *Raft) sendRequestVote(server int, args *RequestVoteArgs, reply *RequestVoteReply) bool {
-	ok := rf.peers[server].Call("Raft.RequestVote", args, reply)
-	return ok
-}
-
-
 //
 // the service using Raft (e.g. a k/v server) wants to start
 // agreement on the next command to be appended to Raft's log. if this
@@ -188,7 +182,6 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	isLeader := true
 
 	// Your code here (2B).
-
 
 	return index, term, isLeader
 }
@@ -214,18 +207,77 @@ func (rf *Raft) Kill() {
 // Make() must return quickly, so it should start goroutines
 // for any long-running work.
 //
-func Make(peers []*labrpc.ClientEnd, me int,
+func Make(peers []*labrpc.ClientEnd, id int,
 	persister *Persister, applyCh chan ApplyMsg) *Raft {
 	rf := &Raft{}
+
 	rf.peers = peers
 	rf.persister = persister
-	rf.me = me
+	rf.id = id
 
+	rf.leaderID = NULL
+	rf.currentTerm = 0
+
+	rf.log = make([]RaftLog, 0)
+	rf.log = append(rf.log, RaftLog{Term: 0}) // first log idx is 1
+
+	rf.lastApplied = 0
+	rf.commitIndex = 0
+	rf.state = FOLLOWER
+	rf.votedFor = NULL
+
+	rf.heartBeatSignal = make(chan struct{})
+	rf.staleSignal = make(chan struct{})
+	// rf.doneStaleSignal = make(chan struct{})
+	rf.staleState = false
+	rf.convertToFollower(0)
+
+	go rf.listen()
 	// Your initialization code here (2A, 2B, 2C).
 
 	// initialize from state persisted before a crash
 	rf.readPersist(persister.ReadRaftState())
 
-
 	return rf
+}
+
+// state conversion
+func (rf *Raft) convertToFollower(term int) {
+	rf.currentTerm = term
+	rf.state = FOLLOWER
+	rf.votedFor = NULL
+	DPrintf("id: %d convertToFollower, term: %d", rf.id, rf.currentTerm)
+}
+
+func (rf *Raft) convertToCandidate() {
+	rf.state = CANDIDATE
+	rf.currentTerm++
+	rf.votedFor = rf.id
+	DPrintf("id: %d convertToCandidate, term: %d", rf.id, rf.currentTerm)
+}
+
+func (rf *Raft) convertToLeader() {
+	DPrintf("id: %d convertToLeader, term %d", rf.id, rf.currentTerm)
+	rf.state = LEADER
+	rf.nextIndex = make([]int, rf.numServer())
+	rf.matchIndex = make([]int, rf.numServer())
+	for i := 0; i < rf.numServer(); i++ {
+		rf.nextIndex[i] = rf.getLastLogIndex() + 1
+	}
+}
+
+func (rf *Raft) stale() {
+	if rf.staleState == false {
+		rf.staleState = true
+		go send(rf.staleSignal) // only one signal can be effective (hopefully)
+		// go sendWithCancellation(rf.staleSignal, rf.doneStaleSignal) // Must call cancel in FOLLOWER state
+	} else {
+		rf.staleState = true
+	}
+}
+
+func (rf *Raft) unStale() {
+	rf.staleState = false
+	// consume(rf.staleSignal) //consume if any
+	// rf.doneStaleSignal = make(chan struct{})
 }

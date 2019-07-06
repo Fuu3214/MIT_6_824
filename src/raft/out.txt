@@ -1,0 +1,452 @@
+2019/07/06 18:03:02 id: 0 convertToFollower, term: 0
+2019/07/06 18:03:02 id: 1 convertToFollower, term: 0
+2019/07/06 18:03:02 id: 2 convertToFollower, term: 0
+Test (2A): election after network failure ...
+2019/07/06 18:03:02 FOLLOWER 1 has waited too long, convert to candidate, term: 0
+2019/07/06 18:03:02 id: 1 convertToCandidate, term: 1
+2019/07/06 18:03:02 1 sending requestVote to: 2, term: 1
+2019/07/06 18:03:02 1 sending requestVote to: 0, term: 1
+2019/07/06 18:03:02 id: 2 received requestVote from: 1, rpc term: 1, cur Term: 0
+2019/07/06 18:03:02 id: 2, term smaller than rpc request
+2019/07/06 18:03:02 id: 2 convertToFollower, term: 1
+2019/07/06 18:03:02 id: 0 received requestVote from: 1, rpc term: 1, cur Term: 0
+2019/07/06 18:03:02 id: 0, term smaller than rpc request
+2019/07/06 18:03:02 id: 0 convertToFollower, term: 1
+2019/07/06 18:03:02 id：1, countVote: 2, term: 1
+2019/07/06 18:03:02 id 1 elected, term: 1
+2019/07/06 18:03:02 id: 1 convertToLeader, term 1
+2019/07/06 18:03:02 id：1, countVote: 3, term: 1
+2019/07/06 18:03:02 1 send append entries to: 0 at term: 1
+2019/07/06 18:03:02 1 send append entries to: 2 at term: 1
+2019/07/06 18:03:02 FOLLOWER 2 has waited too long, convert to candidate, term: 1
+2019/07/06 18:03:02 id: 2 convertToCandidate, term: 2
+2019/07/06 18:03:02 2 recieves stale signal at term: 2, convert to follower
+2019/07/06 18:03:02 2 sending requestVote to: 0, term: 2
+2019/07/06 18:03:02 2 sending requestVote to: 1, term: 2
+2019/07/06 18:03:02 id: 0 received requestVote from: 2, rpc term: 2, cur Term: 1
+2019/07/06 18:03:02 id: 0, term smaller than rpc request
+2019/07/06 18:03:02 id: 0 convertToFollower, term: 2
+2019/07/06 18:03:02 0 recieved appendentry from: 1, but RPC term: 1 is smaller than current term: 2, ignore!
+2019/07/06 18:03:02 id：2, countVote: 2, term: 2
+2019/07/06 18:03:02 id: 1 term smaller than rpc reply, term: 1
+2019/07/06 18:03:02 id: 1 convertToFollower, term: 2
+2019/07/06 18:03:02 id: 1 received requestVote from: 2, rpc term: 2, cur Term: 2
+2019/07/06 18:03:02 1 recieves stale signal at term: 2, convert to follower
+2019/07/06 18:03:02 2 recieved appendentry from: 1, but RPC term: 1 is smaller than current term: 2, ignore!
+2019/07/06 18:03:02 id：2, countVote: 3, term: 2
+2019/07/06 18:03:02 FOLLOWER 0 has waited too long, convert to candidate, term: 2
+2019/07/06 18:03:02 id: 0 convertToCandidate, term: 3
+2019/07/06 18:03:02 0 recieves stale signal at term: 3, convert to follower
+2019/07/06 18:03:02 0 sending requestVote to: 1, term: 3
+2019/07/06 18:03:02 0 sending requestVote to: 2, term: 3
+2019/07/06 18:03:02 id: 1 received requestVote from: 0, rpc term: 3, cur Term: 2
+2019/07/06 18:03:02 id: 1, term smaller than rpc request
+2019/07/06 18:03:02 id: 1 convertToFollower, term: 3
+2019/07/06 18:03:02 id: 2 received requestVote from: 0, rpc term: 3, cur Term: 2
+2019/07/06 18:03:02 id: 2, term smaller than rpc request
+2019/07/06 18:03:02 id: 2 convertToFollower, term: 3
+2019/07/06 18:03:02 id：0, countVote: 2, term: 3
+2019/07/06 18:03:02 id：0, countVote: 3, term: 3
+2019/07/06 18:03:02 FOLLOWER 1 has waited too long, convert to candidate, term: 3
+2019/07/06 18:03:02 id: 1 convertToCandidate, term: 4
+2019/07/06 18:03:02 1 sending requestVote to: 2, term: 4
+2019/07/06 18:03:02 1 sending requestVote to: 0, term: 4
+2019/07/06 18:03:02 id: 2 received requestVote from: 1, rpc term: 4, cur Term: 3
+2019/07/06 18:03:02 id: 2, term smaller than rpc request
+2019/07/06 18:03:02 id: 0 received requestVote from: 1, rpc term: 4, cur Term: 3
+2019/07/06 18:03:02 id: 0, term smaller than rpc request
+2019/07/06 18:03:02 id: 0 convertToFollower, term: 4
+2019/07/06 18:03:02 id: 2 convertToFollower, term: 4
+2019/07/06 18:03:02 id：1, countVote: 2, term: 4
+2019/07/06 18:03:02 id：1, countVote: 3, term: 4
+2019/07/06 18:03:02 id 1 elected, term: 4
+2019/07/06 18:03:02 id: 1 convertToLeader, term 4
+2019/07/06 18:03:02 1 send append entries to: 2 at term: 4
+2019/07/06 18:03:02 1 send append entries to: 0 at term: 4
+2019/07/06 18:03:02 id: 2 convertToFollower, term: 4
+2019/07/06 18:03:02 id: 0 convertToFollower, term: 4
+2019/07/06 18:03:02 2 recieved appendentry from: 1, current state: 1, rpc term: 4, current term: 4, signal heartbeat
+2019/07/06 18:03:02 0 recieved appendentry from: 1, current state: 1, rpc term: 4, current term: 4, signal heartbeat
+2019/07/06 18:03:02 FOLLOWER 2 has recieved heartbeat signal, term: 4
+2019/07/06 18:03:02 FOLLOWER 0 has recieved heartbeat signal, term: 4
+2019/07/06 18:03:03 1 send append entries to: 2 at term: 4
+2019/07/06 18:03:03 1 send append entries to: 0 at term: 4
+2019/07/06 18:03:03 id: 2 convertToFollower, term: 4
+2019/07/06 18:03:03 id: 0 convertToFollower, term: 4
+2019/07/06 18:03:03 2 recieved appendentry from: 1, current state: 1, rpc term: 4, current term: 4, signal heartbeat
+2019/07/06 18:03:03 0 recieved appendentry from: 1, current state: 1, rpc term: 4, current term: 4, signal heartbeat
+2019/07/06 18:03:03 FOLLOWER 2 has recieved heartbeat signal, term: 4
+2019/07/06 18:03:03 FOLLOWER 0 has recieved heartbeat signal, term: 4
+2019/07/06 18:03:03 1 send append entries to: 2 at term: 4
+2019/07/06 18:03:03 1 send append entries to: 0 at term: 4
+2019/07/06 18:03:03 id: 2 convertToFollower, term: 4
+2019/07/06 18:03:03 id: 0 convertToFollower, term: 4
+2019/07/06 18:03:03 2 recieved appendentry from: 1, current state: 1, rpc term: 4, current term: 4, signal heartbeat
+2019/07/06 18:03:03 0 recieved appendentry from: 1, current state: 1, rpc term: 4, current term: 4, signal heartbeat
+2019/07/06 18:03:03 FOLLOWER 0 has recieved heartbeat signal, term: 4
+2019/07/06 18:03:03 FOLLOWER 2 has recieved heartbeat signal, term: 4
+2019/07/06 18:03:03 1 send append entries to: 2 at term: 4
+2019/07/06 18:03:03 1 send append entries to: 0 at term: 4
+2019/07/06 18:03:03 id: 2 convertToFollower, term: 4
+2019/07/06 18:03:03 id: 0 convertToFollower, term: 4
+2019/07/06 18:03:03 2 recieved appendentry from: 1, current state: 1, rpc term: 4, current term: 4, signal heartbeat
+2019/07/06 18:03:03 0 recieved appendentry from: 1, current state: 1, rpc term: 4, current term: 4, signal heartbeat
+2019/07/06 18:03:03 FOLLOWER 0 has recieved heartbeat signal, term: 4
+2019/07/06 18:03:03 FOLLOWER 2 has recieved heartbeat signal, term: 4
+2019/07/06 18:03:03 1 send append entries to: 2 at term: 4
+2019/07/06 18:03:03 1 send append entries to: 0 at term: 4
+2019/07/06 18:03:03 1 send append entries to: 2 at term: 4
+2019/07/06 18:03:03 1 send append entries to: 0 at term: 4
+2019/07/06 18:03:03 1 send append entries to: 2 at term: 4
+2019/07/06 18:03:03 1 send append entries to: 0 at term: 4
+2019/07/06 18:03:03 FOLLOWER 2 has waited too long, convert to candidate, term: 4
+2019/07/06 18:03:03 id: 2 convertToCandidate, term: 5
+2019/07/06 18:03:03 2 recieves stale signal at term: 5, convert to follower
+2019/07/06 18:03:03 2 sending requestVote to: 0, term: 5
+2019/07/06 18:03:03 2 sending requestVote to: 1, term: 5
+2019/07/06 18:03:03 id: 0 received requestVote from: 2, rpc term: 5, cur Term: 4
+2019/07/06 18:03:03 id: 0, term smaller than rpc request
+2019/07/06 18:03:03 id: 0 convertToFollower, term: 5
+2019/07/06 18:03:03 id：2, countVote: 2, term: 5
+2019/07/06 18:03:03 FOLLOWER 0 has waited too long, convert to candidate, term: 5
+2019/07/06 18:03:03 id: 0 convertToCandidate, term: 6
+2019/07/06 18:03:03 0 recieves stale signal at term: 6, convert to follower
+2019/07/06 18:03:03 0 sending requestVote to: 1, term: 6
+2019/07/06 18:03:03 0 sending requestVote to: 2, term: 6
+2019/07/06 18:03:03 id: 2 received requestVote from: 0, rpc term: 6, cur Term: 5
+2019/07/06 18:03:03 id: 2, term smaller than rpc request
+2019/07/06 18:03:03 id: 2 convertToFollower, term: 6
+2019/07/06 18:03:03 id：0, countVote: 2, term: 6
+2019/07/06 18:03:03 1 send append entries to: 0 at term: 4
+2019/07/06 18:03:03 1 send append entries to: 2 at term: 4
+2019/07/06 18:03:03 1 send append entries to: 2 at term: 4
+2019/07/06 18:03:03 1 send append entries to: 0 at term: 4
+2019/07/06 18:03:03 1 send append entries to: 2 at term: 4
+2019/07/06 18:03:03 1 send append entries to: 0 at term: 4
+2019/07/06 18:03:03 FOLLOWER 2 has waited too long, convert to candidate, term: 6
+2019/07/06 18:03:03 id: 2 convertToCandidate, term: 7
+2019/07/06 18:03:03 2 recieves stale signal at term: 7, convert to follower
+2019/07/06 18:03:03 2 sending requestVote to: 1, term: 7
+2019/07/06 18:03:03 2 sending requestVote to: 0, term: 7
+2019/07/06 18:03:03 id: 0 received requestVote from: 2, rpc term: 7, cur Term: 6
+2019/07/06 18:03:03 id: 0, term smaller than rpc request
+2019/07/06 18:03:03 id: 0 convertToFollower, term: 7
+2019/07/06 18:03:03 id：2, countVote: 2, term: 7
+2019/07/06 18:03:03 1 send append entries to: 2 at term: 4
+2019/07/06 18:03:03 1 send append entries to: 0 at term: 4
+2019/07/06 18:03:03 FOLLOWER 0 has waited too long, convert to candidate, term: 7
+2019/07/06 18:03:03 id: 0 convertToCandidate, term: 8
+2019/07/06 18:03:03 0 recieves stale signal at term: 8, convert to follower
+2019/07/06 18:03:03 0 sending requestVote to: 1, term: 8
+2019/07/06 18:03:03 0 sending requestVote to: 2, term: 8
+2019/07/06 18:03:03 id: 2 received requestVote from: 0, rpc term: 8, cur Term: 7
+2019/07/06 18:03:03 id: 2, term smaller than rpc request
+2019/07/06 18:03:03 id: 2 convertToFollower, term: 8
+2019/07/06 18:03:03 id：0, countVote: 2, term: 8
+2019/07/06 18:03:04 1 send append entries to: 2 at term: 4
+2019/07/06 18:03:04 1 send append entries to: 0 at term: 4
+2019/07/06 18:03:04 1 send append entries to: 2 at term: 4
+2019/07/06 18:03:04 1 send append entries to: 0 at term: 4
+2019/07/06 18:03:04 1 send append entries to: 2 at term: 4
+2019/07/06 18:03:04 1 send append entries to: 0 at term: 4
+2019/07/06 18:03:04 FOLLOWER 2 has waited too long, convert to candidate, term: 8
+2019/07/06 18:03:04 id: 2 convertToCandidate, term: 9
+2019/07/06 18:03:04 2 recieves stale signal at term: 9, convert to follower
+2019/07/06 18:03:04 2 sending requestVote to: 0, term: 9
+2019/07/06 18:03:04 2 sending requestVote to: 1, term: 9
+2019/07/06 18:03:04 id: 0 received requestVote from: 2, rpc term: 9, cur Term: 8
+2019/07/06 18:03:04 id: 0, term smaller than rpc request
+2019/07/06 18:03:04 id: 0 convertToFollower, term: 9
+2019/07/06 18:03:04 id：2, countVote: 2, term: 9
+2019/07/06 18:03:04 FOLLOWER 0 has waited too long, convert to candidate, term: 9
+2019/07/06 18:03:04 id: 0 convertToCandidate, term: 10
+2019/07/06 18:03:04 0 recieves stale signal at term: 10, convert to follower
+2019/07/06 18:03:04 0 sending requestVote to: 1, term: 10
+2019/07/06 18:03:04 0 sending requestVote to: 2, term: 10
+2019/07/06 18:03:04 id: 2 received requestVote from: 0, rpc term: 10, cur Term: 9
+2019/07/06 18:03:04 id: 2, term smaller than rpc request
+2019/07/06 18:03:04 id: 2 convertToFollower, term: 10
+2019/07/06 18:03:04 id：0, countVote: 2, term: 10
+2019/07/06 18:03:04 1 send append entries to: 0 at term: 4
+2019/07/06 18:03:04 1 send append entries to: 2 at term: 4
+2019/07/06 18:03:04 1 send append entries to: 2 at term: 4
+2019/07/06 18:03:04 1 send append entries to: 0 at term: 4
+2019/07/06 18:03:04 1 send append entries to: 2 at term: 4
+2019/07/06 18:03:04 1 send append entries to: 0 at term: 4
+2019/07/06 18:03:04 FOLLOWER 2 has waited too long, convert to candidate, term: 10
+2019/07/06 18:03:04 id: 2 convertToCandidate, term: 11
+2019/07/06 18:03:04 2 recieves stale signal at term: 11, convert to follower
+2019/07/06 18:03:04 2 sending requestVote to: 0, term: 11
+2019/07/06 18:03:04 2 sending requestVote to: 1, term: 11
+2019/07/06 18:03:04 id: 0 received requestVote from: 2, rpc term: 11, cur Term: 10
+2019/07/06 18:03:04 id: 0, term smaller than rpc request
+2019/07/06 18:03:04 id: 0 convertToFollower, term: 11
+2019/07/06 18:03:04 id：2, countVote: 2, term: 11
+2019/07/06 18:03:04 1 send append entries to: 2 at term: 4
+2019/07/06 18:03:04 1 send append entries to: 0 at term: 4
+2019/07/06 18:03:04 FOLLOWER 0 has waited too long, convert to candidate, term: 11
+2019/07/06 18:03:04 id: 0 convertToCandidate, term: 12
+2019/07/06 18:03:04 0 recieves stale signal at term: 12, convert to follower
+2019/07/06 18:03:04 0 sending requestVote to: 1, term: 12
+2019/07/06 18:03:04 0 sending requestVote to: 2, term: 12
+2019/07/06 18:03:04 id: 2 received requestVote from: 0, rpc term: 12, cur Term: 11
+2019/07/06 18:03:04 id: 2, term smaller than rpc request
+2019/07/06 18:03:04 id: 2 convertToFollower, term: 12
+2019/07/06 18:03:04 id：0, countVote: 2, term: 12
+2019/07/06 18:03:04 1 send append entries to: 2 at term: 4
+2019/07/06 18:03:04 1 send append entries to: 0 at term: 4
+2019/07/06 18:03:04 1 send append entries to: 2 at term: 4
+2019/07/06 18:03:04 1 send append entries to: 0 at term: 4
+2019/07/06 18:03:04 1 send append entries to: 2 at term: 4
+2019/07/06 18:03:04 1 send append entries to: 0 at term: 4
+2019/07/06 18:03:04 FOLLOWER 0 has waited too long, convert to candidate, term: 12
+2019/07/06 18:03:04 id: 0 convertToCandidate, term: 13
+2019/07/06 18:03:04 0 sending requestVote to: 2, term: 13
+2019/07/06 18:03:04 0 sending requestVote to: 1, term: 13
+2019/07/06 18:03:04 id: 2 received requestVote from: 0, rpc term: 13, cur Term: 12
+2019/07/06 18:03:04 id: 2, term smaller than rpc request
+2019/07/06 18:03:04 id: 2 convertToFollower, term: 13
+2019/07/06 18:03:04 id：0, countVote: 2, term: 13
+2019/07/06 18:03:04 id 0 elected, term: 13
+2019/07/06 18:03:04 id: 0 convertToLeader, term 13
+2019/07/06 18:03:04 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:04 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:04 id: 2 convertToFollower, term: 13
+2019/07/06 18:03:04 2 recieved appendentry from: 0, current state: 1, rpc term: 13, current term: 13, signal heartbeat
+2019/07/06 18:03:04 FOLLOWER 2 has recieved heartbeat signal, term: 13
+2019/07/06 18:03:05 1 send append entries to: 0 at term: 4
+2019/07/06 18:03:05 1 send append entries to: 2 at term: 4
+2019/07/06 18:03:05 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:05 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:05 id: 2 convertToFollower, term: 13
+2019/07/06 18:03:05 2 recieved appendentry from: 0, current state: 1, rpc term: 13, current term: 13, signal heartbeat
+2019/07/06 18:03:05 FOLLOWER 2 has recieved heartbeat signal, term: 13
+2019/07/06 18:03:05 1 send append entries to: 2 at term: 4
+2019/07/06 18:03:05 1 send append entries to: 0 at term: 4
+2019/07/06 18:03:05 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:05 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:05 id: 2 convertToFollower, term: 13
+2019/07/06 18:03:05 2 recieved appendentry from: 0, current state: 1, rpc term: 13, current term: 13, signal heartbeat
+2019/07/06 18:03:05 FOLLOWER 2 has recieved heartbeat signal, term: 13
+2019/07/06 18:03:05 1 send append entries to: 2 at term: 4
+2019/07/06 18:03:05 1 send append entries to: 0 at term: 4
+2019/07/06 18:03:05 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:05 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:05 id: 2 convertToFollower, term: 13
+2019/07/06 18:03:05 2 recieved appendentry from: 0, current state: 1, rpc term: 13, current term: 13, signal heartbeat
+2019/07/06 18:03:05 FOLLOWER 2 has recieved heartbeat signal, term: 13
+2019/07/06 18:03:05 1 send append entries to: 2 at term: 4
+2019/07/06 18:03:05 1 send append entries to: 0 at term: 4
+2019/07/06 18:03:05 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:05 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:05 id: 2 convertToFollower, term: 13
+2019/07/06 18:03:05 2 recieved appendentry from: 0, current state: 1, rpc term: 13, current term: 13, signal heartbeat
+2019/07/06 18:03:05 FOLLOWER 2 has recieved heartbeat signal, term: 13
+2019/07/06 18:03:05 1 send append entries to: 2 at term: 4
+2019/07/06 18:03:05 1 send append entries to: 0 at term: 4
+2019/07/06 18:03:05 2 recieved appendentry from: 1, but RPC term: 4 is smaller than current term: 13, ignore!
+2019/07/06 18:03:05 0 recieved appendentry from: 1, but RPC term: 4 is smaller than current term: 13, ignore!
+2019/07/06 18:03:05 id: 1 term smaller than rpc reply, term: 4
+2019/07/06 18:03:05 id: 1 convertToFollower, term: 13
+2019/07/06 18:03:05 1 recieves stale signal at term: 13, convert to follower
+2019/07/06 18:03:05 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:05 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:05 id: 2 convertToFollower, term: 13
+2019/07/06 18:03:05 id: 1 convertToFollower, term: 13
+2019/07/06 18:03:05 2 recieved appendentry from: 0, current state: 1, rpc term: 13, current term: 13, signal heartbeat
+2019/07/06 18:03:05 FOLLOWER 2 has recieved heartbeat signal, term: 13
+2019/07/06 18:03:05 1 recieved appendentry from: 0, current state: 1, rpc term: 13, current term: 13, signal heartbeat
+2019/07/06 18:03:05 FOLLOWER 1 has recieved heartbeat signal, term: 13
+2019/07/06 18:03:05 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:05 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:05 id: 2 convertToFollower, term: 13
+2019/07/06 18:03:05 2 recieved appendentry from: 0, current state: 1, rpc term: 13, current term: 13, signal heartbeat
+2019/07/06 18:03:05 id: 1 convertToFollower, term: 13
+2019/07/06 18:03:05 FOLLOWER 2 has recieved heartbeat signal, term: 13
+2019/07/06 18:03:05 1 recieved appendentry from: 0, current state: 1, rpc term: 13, current term: 13, signal heartbeat
+2019/07/06 18:03:05 FOLLOWER 1 has recieved heartbeat signal, term: 13
+2019/07/06 18:03:05 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:05 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:05 id: 2 convertToFollower, term: 13
+2019/07/06 18:03:05 id: 1 convertToFollower, term: 13
+2019/07/06 18:03:05 2 recieved appendentry from: 0, current state: 1, rpc term: 13, current term: 13, signal heartbeat
+2019/07/06 18:03:05 FOLLOWER 2 has recieved heartbeat signal, term: 13
+2019/07/06 18:03:05 1 recieved appendentry from: 0, current state: 1, rpc term: 13, current term: 13, signal heartbeat
+2019/07/06 18:03:05 FOLLOWER 1 has recieved heartbeat signal, term: 13
+2019/07/06 18:03:05 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:05 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:05 id: 1 convertToFollower, term: 13
+2019/07/06 18:03:05 1 recieved appendentry from: 0, current state: 1, rpc term: 13, current term: 13, signal heartbeat
+2019/07/06 18:03:05 FOLLOWER 1 has recieved heartbeat signal, term: 13
+2019/07/06 18:03:05 id: 2 convertToFollower, term: 13
+2019/07/06 18:03:05 2 recieved appendentry from: 0, current state: 1, rpc term: 13, current term: 13, signal heartbeat
+2019/07/06 18:03:05 FOLLOWER 2 has recieved heartbeat signal, term: 13
+2019/07/06 18:03:05 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:05 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:06 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:06 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:06 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:06 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:06 FOLLOWER 1 has waited too long, convert to candidate, term: 13
+2019/07/06 18:03:06 id: 1 convertToCandidate, term: 14
+2019/07/06 18:03:06 1 sending requestVote to: 2, term: 14
+2019/07/06 18:03:06 1 sending requestVote to: 0, term: 14
+2019/07/06 18:03:06 FOLLOWER 2 has waited too long, convert to candidate, term: 13
+2019/07/06 18:03:06 id: 2 convertToCandidate, term: 14
+2019/07/06 18:03:06 2 recieves stale signal at term: 14, convert to follower
+2019/07/06 18:03:06 2 sending requestVote to: 0, term: 14
+2019/07/06 18:03:06 2 sending requestVote to: 1, term: 14
+2019/07/06 18:03:06 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:06 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:06 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:06 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:06 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:06 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:06 id: 1 convertToCandidate, term: 15
+2019/07/06 18:03:06 1 sending requestVote to: 2, term: 15
+2019/07/06 18:03:06 1 sending requestVote to: 0, term: 15
+2019/07/06 18:03:06 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:06 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:06 FOLLOWER 2 has waited too long, convert to candidate, term: 14
+2019/07/06 18:03:06 id: 2 convertToCandidate, term: 15
+2019/07/06 18:03:06 2 sending requestVote to: 1, term: 15
+2019/07/06 18:03:06 2 sending requestVote to: 0, term: 15
+2019/07/06 18:03:06 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:06 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:06 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:06 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:06 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:06 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:06 id: 1 convertToCandidate, term: 16
+2019/07/06 18:03:06 1 sending requestVote to: 2, term: 16
+2019/07/06 18:03:06 1 sending requestVote to: 0, term: 16
+2019/07/06 18:03:06 id: 2 convertToCandidate, term: 16
+2019/07/06 18:03:06 2 sending requestVote to: 1, term: 16
+2019/07/06 18:03:06 2 sending requestVote to: 0, term: 16
+2019/07/06 18:03:06 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:06 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:07 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:07 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:07 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:07 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:07 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:07 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:07 id: 2 convertToCandidate, term: 17
+2019/07/06 18:03:07 2 sending requestVote to: 1, term: 17
+2019/07/06 18:03:07 2 sending requestVote to: 0, term: 17
+2019/07/06 18:03:07 id: 1 convertToCandidate, term: 17
+2019/07/06 18:03:07 1 sending requestVote to: 2, term: 17
+2019/07/06 18:03:07 1 sending requestVote to: 0, term: 17
+2019/07/06 18:03:07 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:07 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:07 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:07 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:07 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:07 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:07 id: 2 convertToCandidate, term: 18
+2019/07/06 18:03:07 2 sending requestVote to: 1, term: 18
+2019/07/06 18:03:07 2 sending requestVote to: 0, term: 18
+2019/07/06 18:03:07 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:07 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:07 id: 1 convertToCandidate, term: 18
+2019/07/06 18:03:07 1 sending requestVote to: 2, term: 18
+2019/07/06 18:03:07 1 sending requestVote to: 0, term: 18
+2019/07/06 18:03:07 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:07 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:07 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:07 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:07 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:07 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:07 id: 2 convertToCandidate, term: 19
+2019/07/06 18:03:07 2 sending requestVote to: 1, term: 19
+2019/07/06 18:03:07 2 sending requestVote to: 0, term: 19
+2019/07/06 18:03:07 id: 1 received requestVote from: 2, rpc term: 19, cur Term: 18
+2019/07/06 18:03:07 id: 1, term smaller than rpc request
+2019/07/06 18:03:07 id: 1 convertToFollower, term: 19
+2019/07/06 18:03:07 1 recieves stale signal at term: 19, convert to follower
+2019/07/06 18:03:07 id：2, countVote: 2, term: 19
+2019/07/06 18:03:07 id 2 elected, term: 19
+2019/07/06 18:03:07 id: 2 convertToLeader, term 19
+2019/07/06 18:03:07 2 send append entries to: 1 at term: 19
+2019/07/06 18:03:07 2 send append entries to: 0 at term: 19
+2019/07/06 18:03:07 id: 1 convertToFollower, term: 19
+2019/07/06 18:03:07 1 recieved appendentry from: 2, current state: 1, rpc term: 19, current term: 19, signal heartbeat
+2019/07/06 18:03:07 FOLLOWER 1 has recieved heartbeat signal, term: 19
+2019/07/06 18:03:08 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:08 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:08 2 send append entries to: 1 at term: 19
+2019/07/06 18:03:08 2 send append entries to: 0 at term: 19
+2019/07/06 18:03:08 id: 1 convertToFollower, term: 19
+2019/07/06 18:03:08 1 recieved appendentry from: 2, current state: 1, rpc term: 19, current term: 19, signal heartbeat
+2019/07/06 18:03:08 FOLLOWER 1 has recieved heartbeat signal, term: 19
+2019/07/06 18:03:08 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:08 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:08 2 send append entries to: 1 at term: 19
+2019/07/06 18:03:08 2 send append entries to: 0 at term: 19
+2019/07/06 18:03:08 id: 1 convertToFollower, term: 19
+2019/07/06 18:03:08 1 recieved appendentry from: 2, current state: 1, rpc term: 19, current term: 19, signal heartbeat
+2019/07/06 18:03:08 FOLLOWER 1 has recieved heartbeat signal, term: 19
+2019/07/06 18:03:08 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:08 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:08 2 send append entries to: 1 at term: 19
+2019/07/06 18:03:08 2 send append entries to: 0 at term: 19
+2019/07/06 18:03:08 id: 1 convertToFollower, term: 19
+2019/07/06 18:03:08 1 recieved appendentry from: 2, current state: 1, rpc term: 19, current term: 19, signal heartbeat
+2019/07/06 18:03:08 FOLLOWER 1 has recieved heartbeat signal, term: 19
+2019/07/06 18:03:08 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:08 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:08 2 send append entries to: 1 at term: 19
+2019/07/06 18:03:08 2 send append entries to: 0 at term: 19
+2019/07/06 18:03:08 id: 1 convertToFollower, term: 19
+2019/07/06 18:03:08 1 recieved appendentry from: 2, current state: 1, rpc term: 19, current term: 19, signal heartbeat
+2019/07/06 18:03:08 FOLLOWER 1 has recieved heartbeat signal, term: 19
+2019/07/06 18:03:08 0 send append entries to: 2 at term: 13
+2019/07/06 18:03:08 0 send append entries to: 1 at term: 13
+2019/07/06 18:03:08 2 recieved appendentry from: 0, but RPC term: 13 is smaller than current term: 19, ignore!
+2019/07/06 18:03:08 1 recieved appendentry from: 0, but RPC term: 13 is smaller than current term: 19, ignore!
+2019/07/06 18:03:08 id: 0 term smaller than rpc reply, term: 13
+2019/07/06 18:03:08 id: 0 convertToFollower, term: 19
+2019/07/06 18:03:08 0 recieves stale signal at term: 19, convert to follower
+2019/07/06 18:03:08 2 send append entries to: 1 at term: 19
+2019/07/06 18:03:08 2 send append entries to: 0 at term: 19
+2019/07/06 18:03:08 id: 1 convertToFollower, term: 19
+2019/07/06 18:03:08 id: 0 convertToFollower, term: 19
+2019/07/06 18:03:08 1 recieved appendentry from: 2, current state: 1, rpc term: 19, current term: 19, signal heartbeat
+2019/07/06 18:03:08 0 recieved appendentry from: 2, current state: 1, rpc term: 19, current term: 19, signal heartbeat
+2019/07/06 18:03:08 FOLLOWER 0 has recieved heartbeat signal, term: 19
+2019/07/06 18:03:08 FOLLOWER 1 has recieved heartbeat signal, term: 19
+2019/07/06 18:03:08 2 send append entries to: 1 at term: 19
+2019/07/06 18:03:08 2 send append entries to: 0 at term: 19
+2019/07/06 18:03:08 id: 1 convertToFollower, term: 19
+2019/07/06 18:03:08 id: 0 convertToFollower, term: 19
+2019/07/06 18:03:08 1 recieved appendentry from: 2, current state: 1, rpc term: 19, current term: 19, signal heartbeat
+2019/07/06 18:03:08 FOLLOWER 1 has recieved heartbeat signal, term: 19
+2019/07/06 18:03:08 0 recieved appendentry from: 2, current state: 1, rpc term: 19, current term: 19, signal heartbeat
+2019/07/06 18:03:08 FOLLOWER 0 has recieved heartbeat signal, term: 19
+2019/07/06 18:03:08 2 send append entries to: 1 at term: 19
+2019/07/06 18:03:08 2 send append entries to: 0 at term: 19
+2019/07/06 18:03:08 id: 0 convertToFollower, term: 19
+2019/07/06 18:03:08 id: 1 convertToFollower, term: 19
+2019/07/06 18:03:08 0 recieved appendentry from: 2, current state: 1, rpc term: 19, current term: 19, signal heartbeat
+2019/07/06 18:03:08 1 recieved appendentry from: 2, current state: 1, rpc term: 19, current term: 19, signal heartbeat
+2019/07/06 18:03:08 FOLLOWER 1 has recieved heartbeat signal, term: 19
+2019/07/06 18:03:08 FOLLOWER 0 has recieved heartbeat signal, term: 19
+2019/07/06 18:03:08 2 send append entries to: 1 at term: 19
+2019/07/06 18:03:08 2 send append entries to: 0 at term: 19
+2019/07/06 18:03:08 id: 0 convertToFollower, term: 19
+2019/07/06 18:03:08 id: 1 convertToFollower, term: 19
+2019/07/06 18:03:08 0 recieved appendentry from: 2, current state: 1, rpc term: 19, current term: 19, signal heartbeat
+2019/07/06 18:03:08 FOLLOWER 0 has recieved heartbeat signal, term: 19
+2019/07/06 18:03:08 1 recieved appendentry from: 2, current state: 1, rpc term: 19, current term: 19, signal heartbeat
+2019/07/06 18:03:08 FOLLOWER 1 has recieved heartbeat signal, term: 19
+2019/07/06 18:03:08 2 send append entries to: 1 at term: 19
+2019/07/06 18:03:08 2 send append entries to: 0 at term: 19
+2019/07/06 18:03:08 id: 1 convertToFollower, term: 19
+2019/07/06 18:03:08 id: 0 convertToFollower, term: 19
+2019/07/06 18:03:08 1 recieved appendentry from: 2, current state: 1, rpc term: 19, current term: 19, signal heartbeat
+2019/07/06 18:03:08 0 recieved appendentry from: 2, current state: 1, rpc term: 19, current term: 19, signal heartbeat
+2019/07/06 18:03:08 FOLLOWER 0 has recieved heartbeat signal, term: 19
+2019/07/06 18:03:08 FOLLOWER 1 has recieved heartbeat signal, term: 19
+  ... Passed --   6.6  3  192    0
+PASS
+ok  	raft	6.683s
