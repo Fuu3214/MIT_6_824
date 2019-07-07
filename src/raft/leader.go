@@ -6,41 +6,47 @@ import (
 )
 
 func (rf *Raft) broadCast(empty bool) {
+	heartBeatTimer := time.NewTimer(heartBeat())
+	defer heartBeatTimer.Stop()
+	for {
+		resetTimer(heartBeatTimer, heartBeat())
+		rf.mu.Lock()
+		if !rf.staleState {
+			numServer := rf.numServer()
+			for i := 0; i < numServer; i++ {
+				if rf.id == i {
+					continue
+				}
+				args := &AppendEntriesArgs{
+					Term:         rf.currentTerm,
+					LeaderID:     rf.id,
+					LeaderCommit: rf.commitIndex,
+				}
+				args.PrevLogIndex = rf.nextIndex[i] - 1
+				args.PrevLogTerm = rf.getLog(rf.nextIndex[i] - 1).Term
 
-	heartBeatTimer := time.After(heartBeat())
-
-	rf.mu.Lock()
-	if !rf.staleState {
-		numServer := rf.numServer()
-		for i := 0; i < numServer; i++ {
-			if rf.id == i {
-				continue
+				if empty || rf.getLastLogIndex() < rf.nextIndex[i] { // first or idle
+					args.Entries = make([]RaftLog, 0)
+				} else {
+					args.Entries = rf.getLogs(rf.nextIndex[i], rf.getLastLogIndex()+1)
+				}
+				go rf.sync(args, i)
 			}
-			args := &AppendEntriesArgs{
-				Term:         rf.currentTerm,
-				LeaderID:     rf.id,
-				LeaderCommit: rf.commitIndex,
-			}
-			args.PrevLogIndex = rf.nextIndex[i] - 1
-			args.PrevLogTerm = rf.getLog(rf.nextIndex[i] - 1).Term
-
-			if empty || rf.getLastLogIndex() < rf.nextIndex[i] { // first or idle
-				args.Entries = make([]RaftLog, 0)
-			} else {
-				args.Entries = rf.getLogs(rf.nextIndex[i], rf.getLastLogIndex()+1)
-			}
-			go rf.sync(args, i)
 		}
-	}
-	rf.mu.Unlock()
+		rf.mu.Unlock()
 
-	select {
-	case <-rf.staleSignal:
-		// leader stale, convert to follower mode
-		DPrintf("%d recieves stale signal at term: %d, convert to follower", rf.id, rf.currentTerm)
-		go rf.listen()
-	case <-heartBeatTimer:
-		go rf.broadCast(true)
+		select {
+		case <-rf.killCh: //terminate
+			return
+		case <-rf.staleSignal:
+			// leader stale, convert to follower mode
+			DPrintf("%d recieves stale signal at term: %d, convert to follower", rf.id, rf.currentTerm)
+			go rf.listen()
+			return
+		case <-heartBeatTimer.C:
+			//send heartbeat
+			heartBeatTimer.Reset(KEEPALIVEINTERVAL) // remove it and deadlock
+		}
 	}
 }
 
@@ -50,13 +56,9 @@ func (rf *Raft) sync(args *AppendEntriesArgs, server int) {
 	if rf.callAppendEntries(server, args, &reply) {
 		rf.mu.Lock()
 		if reply.Term > rf.currentTerm { // RPC reply has larger term
+			rf.votedFor = NULL
 			DPrintf("id: %d term smaller than rpc reply, term: %d", rf.id, rf.currentTerm)
-			if rf.currentTerm == args.Term { // someone else haven't signal stale yet
-				rf.convertToFollower(reply.Term)
-				rf.stale()
-			} else {
-				rf.convertToFollower(reply.Term)
-			}
+			rf.stale(reply.Term)
 			rf.mu.Unlock()
 			return
 		}

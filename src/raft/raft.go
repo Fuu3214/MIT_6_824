@@ -73,8 +73,11 @@ type Raft struct {
 	//channel for communication
 	heartBeatSignal chan struct{}
 	staleSignal     chan struct{}
+	doneStaleSignal chan struct{}
 	// doneStaleSignal chan struct{} // ensure only one signal can be effective
 	staleState bool
+
+	killCh chan struct{}
 }
 
 // type heartBeatMsg struct {
@@ -194,6 +197,7 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 //
 func (rf *Raft) Kill() {
 	// Your code here, if desired.
+	close(rf.killCh)
 }
 
 //
@@ -209,7 +213,10 @@ func (rf *Raft) Kill() {
 //
 func Make(peers []*labrpc.ClientEnd, id int,
 	persister *Persister, applyCh chan ApplyMsg) *Raft {
+
 	rf := &Raft{}
+
+	rf.killCh = make(chan struct{})
 
 	rf.peers = peers
 	rf.persister = persister
@@ -228,7 +235,7 @@ func Make(peers []*labrpc.ClientEnd, id int,
 
 	rf.heartBeatSignal = make(chan struct{})
 	rf.staleSignal = make(chan struct{})
-	// rf.doneStaleSignal = make(chan struct{})
+	rf.doneStaleSignal = make(chan struct{})
 	rf.staleState = false
 	rf.convertToFollower(0)
 
@@ -245,7 +252,6 @@ func Make(peers []*labrpc.ClientEnd, id int,
 func (rf *Raft) convertToFollower(term int) {
 	rf.currentTerm = term
 	rf.state = FOLLOWER
-	rf.votedFor = NULL
 	DPrintf("id: %d convertToFollower, term: %d", rf.id, rf.currentTerm)
 }
 
@@ -266,18 +272,27 @@ func (rf *Raft) convertToLeader() {
 	}
 }
 
-func (rf *Raft) stale() {
-	if rf.staleState == false {
+// stale wiil change rf to follower and signal control to ignore timeout
+func (rf *Raft) stale(term int) {
+	// if rf.staleState == false {
+	// 	rf.staleState = true
+	// 	go send(rf.staleSignal) // only one signal can be effective (hopefully)
+	// 	// go sendWithCancellation(rf.staleSignal, rf.doneStaleSignal) // Must call cancel in FOLLOWER state
+	// } else {
+	// 	rf.staleState = true
+	// }
+
+	//can only be effective when in FOLLOWER state
+	if rf.state != FOLLOWER {
 		rf.staleState = true
-		go send(rf.staleSignal) // only one signal can be effective (hopefully)
-		// go sendWithCancellation(rf.staleSignal, rf.doneStaleSignal) // Must call cancel in FOLLOWER state
-	} else {
-		rf.staleState = true
+		rf.convertToFollower(term)
+		go sendWithCancellation(rf.staleSignal, rf.doneStaleSignal) // Must call cancel in FOLLOWER state
 	}
 }
 
 func (rf *Raft) unStale() {
 	rf.staleState = false
-	// consume(rf.staleSignal) //consume if any
-	// rf.doneStaleSignal = make(chan struct{})
+	consume(rf.staleSignal) //consume if any
+	close(rf.doneStaleSignal)
+	rf.doneStaleSignal = make(chan struct{})
 }

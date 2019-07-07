@@ -32,3 +32,10 @@ func send(ch chan struct{}) { //send a signal so that some one does not block
 	}
 	ch <- struct{}{}
 }
+
+func consume(ch chan struct{}) {
+	select {
+	case <-ch: // consume anything in channel if exists
+	default:
+	}
+}

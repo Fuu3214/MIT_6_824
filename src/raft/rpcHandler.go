@@ -38,8 +38,8 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 		return
 	} else if args.Term > rf.currentTerm {
 		DPrintf("id: %d, term smaller than rpc request", rf.id)
-		rf.convertToFollower(args.Term)
-		rf.stale()
+		rf.votedFor = NULL
+		rf.stale(args.Term)
 	}
 	reply.Term = rf.currentTerm
 
@@ -129,21 +129,23 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		return
 	}
 
+	if rf.state == LEADER && args.Term == rf.currentTerm { // 2 leaders
+		DPrintf("Houston, we fucked up!")
+	}
+
+	if args.Term > rf.currentTerm {
+		rf.votedFor = args.LeaderID
+	}
 	if rf.state == FOLLOWER {
 		rf.convertToFollower(args.Term)
 		go func() {
 			DPrintf("%d recieved appendentry from: %d, current state: %d, rpc term: %d, current term: %d, signal heartbeat", rf.id, args.LeaderID, rf.state, args.Term, rf.currentTerm)
 			send(rf.heartBeatSignal) // signal follower to reset timer
 		}()
-	} else if args.Term > rf.currentTerm {
+	} else {
 		// stale leader and candidate
 		DPrintf("%d recieved appendentry from: %d, current state: %d, rpc term: %d, current term: %d, convert to follower", rf.id, args.LeaderID, rf.state, args.Term, rf.currentTerm)
-		rf.convertToFollower(args.Term)
-		rf.stale() // signal control to change to follower and ignore timeout
-	}
-
-	if rf.state == LEADER && args.Term == rf.currentTerm { // 2 leaders
-		DPrintf("Houston, we fucked up!")
+		rf.stale(args.Term) // change to follower and signal control to ignore timeout
 	}
 
 	reply.Term = rf.currentTerm

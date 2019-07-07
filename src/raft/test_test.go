@@ -17,7 +17,14 @@ import "sync"
 
 // The tester generously allows solutions to complete elections in one second
 // (much more than the paper's range of timeouts).
-const RaftElectionTimeout = 1000 * time.Millisecond
+const RaftElectionTimeout = 500 * time.Millisecond
+
+func Test200(t *testing.T) {
+	for i := 0; i < 200; i++ {
+		TestInitialElection2A(t)
+		TestReElection2A(t)
+	}
+}
 
 func TestInitialElection2A(t *testing.T) {
 	servers := 3
@@ -78,6 +85,48 @@ func TestReElection2A(t *testing.T) {
 
 	// re-join of last node shouldn't prevent leader from existing.
 	cfg.connect(leader2)
+
+	cfg.checkOneLeader()
+
+	cfg.end()
+}
+
+func TestReElection40(t *testing.T) {
+	servers := 3
+	cfg := make_config(t, servers, false)
+	defer cfg.cleanup()
+
+	cfg.begin("Test (2A): election after network failure")
+	for i := 0; i < 40; i++ {
+		leader1 := cfg.checkOneLeader()
+
+		//
+		DPrintf("if the leader disconnects, a new one should be elected.")
+		cfg.disconnect(leader1)
+		cfg.checkOneLeader()
+
+		//
+		//
+		DPrintf("if the old leader rejoins, that shouldn't disturb the new leader.")
+		cfg.connect(leader1)
+		leader2 := cfg.checkOneLeader()
+
+		// if there's no quorum, no leader should
+		// be elected.
+		DPrintf("if there's no quorum, no leader should be elected.")
+		cfg.disconnect(leader2)
+		cfg.disconnect((leader2 + 1) % servers)
+		time.Sleep(2 * RaftElectionTimeout)
+		cfg.checkNoLeader()
+
+		DPrintf("if a quorum arises, it should elect a leader.")
+		cfg.connect((leader2 + 1) % servers)
+		cfg.checkOneLeader()
+
+		// re-join of last node shouldn't prevent leader from existing.
+		cfg.connect(leader2)
+
+	}
 	cfg.checkOneLeader()
 
 	cfg.end()
