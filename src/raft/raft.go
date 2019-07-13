@@ -8,16 +8,18 @@ package raft
 // rf = Make(...)
 //   create a new Raft server.
 // rf.Start(command interface{}) (index, term, isleader)
-//   start agreement on a new log entry
+//   start agreement on a new Log entry
 // rf.GetState() (term, isLeader)
 //   ask a Raft for its current term, and whether it thinks it is leader
 // ApplyMsg
-//   each time a new entry is committed to the log, each Raft peer
+//   each time a new entry is committed to the Log, each Raft peer
 //   should send an ApplyMsg to the service (or tester)
 //   in the same server.
 //
 
 import (
+	"bytes"
+	"labgob"
 	"labrpc"
 	"sync"
 )
@@ -26,11 +28,11 @@ import (
 // import "labgob"
 
 //
-// as each Raft peer becomes aware that successive log entries are
+// as each Raft peer becomes aware that successive Log entries are
 // committed, the peer should send an ApplyMsg to the service (or
 // tester) on the same server, via the applyCh passed to Make(). set
 // CommandValid to true to indicate that the ApplyMsg contains a newly
-// committed log entry.
+// committed Log entry.
 //
 // in Lab 3 you'll want to send other kinds of messages (e.g.,
 // snapshots) on the applyCh; at that point you can add fields to
@@ -46,7 +48,9 @@ type ApplyMsg struct {
 // A Go object implementing a single Raft peer.
 //
 type Raft struct {
-	mu        sync.Mutex          // Lock to protect shared access to this peer's state
+	mu      sync.Mutex // Lock to protect shared access to this peer's state
+	applyMu sync.Mutex // Lock to ensure shared access to applyindex
+
 	peers     []*labrpc.ClientEnd // RPC end points of all peers
 	persister *Persister          // Object to hold this peer's persisted state
 
@@ -58,9 +62,9 @@ type Raft struct {
 	// state a Raft server must maintain.
 
 	//persistent states
-	currentTerm int
-	votedFor    int
-	log         []RaftLog
+	CurrentTerm int
+	VotedFor    int
+	Log         []RaftLog
 
 	//volatile states
 	commitIndex int
@@ -70,14 +74,15 @@ type Raft struct {
 	nextIndex  []int
 	matchIndex []int
 
+	isStale bool // if leader of candidate is stale
+
 	//channel for communication
 	heartBeatSignal chan struct{}
 	staleSignal     chan struct{}
-	doneStaleSignal chan struct{}
-	// doneStaleSignal chan struct{} // ensure only one signal can be effective
-	staleState bool
+	doneStaleSignal chan struct{} // ensure only one signal can be effective
+	killCh          chan struct{}
 
-	killCh chan struct{}
+	applyCh chan ApplyMsg
 }
 
 // type heartBeatMsg struct {
@@ -86,10 +91,11 @@ type Raft struct {
 // }
 
 type RaftLog struct {
-	Term int
+	Term    int
+	Command interface{}
 }
 
-// GetState returns currentTerm and whether this server
+// GetState returns CurrentTerm and whether this server
 // believes it is the leader.
 func (rf *Raft) GetState() (int, bool) {
 
@@ -99,29 +105,33 @@ func (rf *Raft) GetState() (int, bool) {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 
-	term = rf.currentTerm
+	term = rf.CurrentTerm
 	isleader = (rf.state == LEADER)
 
 	return term, isleader
 }
 
-func (rf *Raft) setLog(idx int, value *RaftLog) {
-	rf.log[idx] = *value
+func (rf *Raft) appendLog(newLog ...RaftLog) {
+	rf.Log = append(rf.Log, newLog...)
+	rf.persist()
 }
 func (rf *Raft) getLog(idx int) *RaftLog {
-	return &rf.log[idx]
+	return &rf.Log[idx]
 }
 func (rf *Raft) getLogs(fromIdx int, toIdx int) []RaftLog {
-	return rf.log[fromIdx:toIdx]
+	return rf.Log[fromIdx:toIdx]
 }
 func (rf *Raft) logLen() int {
-	return len(rf.log)
+	return len(rf.Log)
+}
+func (rf *Raft) isLogBegining(idx int) bool {
+	return rf.getLog(idx).Term == 0
 }
 func (rf *Raft) getLastLogIndex() int {
-	return len(rf.log) - 1
+	return len(rf.Log) - 1
 }
 func (rf *Raft) getLastLogTerm() int {
-	return rf.log[rf.getLastLogIndex()].Term
+	return rf.Log[rf.getLastLogIndex()].Term
 }
 func (rf *Raft) numServer() int {
 	return len(rf.peers)
@@ -135,12 +145,16 @@ func (rf *Raft) numServer() int {
 func (rf *Raft) persist() {
 	// Your code here (2C).
 	// Example:
-	// w := new(bytes.Buffer)
-	// e := labgob.NewEncoder(w)
-	// e.Encode(rf.xxx)
-	// e.Encode(rf.yyy)
-	// data := w.Bytes()
-	// rf.persister.SaveRaftState(data)
+	w := new(bytes.Buffer)
+	e := labgob.NewEncoder(w)
+	e.Encode(&rf.CurrentTerm)
+	e.Encode(&rf.VotedFor)
+	e.Encode(&rf.Log)
+	e.Encode(&rf.commitIndex)
+	e.Encode(&rf.lastApplied)
+	data := w.Bytes()
+	rf.persister.SaveRaftState(data)
+	DPrintf("id: %d, persisted: %v, commitIndex: %d, lastapplied: %d", rf.id, rf.Log, rf.commitIndex, rf.lastApplied)
 }
 
 //
@@ -152,25 +166,25 @@ func (rf *Raft) readPersist(data []byte) {
 	}
 	// Your code here (2C).
 	// Example:
-	// r := bytes.NewBuffer(data)
-	// d := labgob.NewDecoder(r)
-	// var xxx
-	// var yyy
-	// if d.Decode(&xxx) != nil ||
-	//    d.Decode(&yyy) != nil {
-	//   error...
-	// } else {
-	//   rf.xxx = xxx
-	//   rf.yyy = yyy
-	// }
+	r := bytes.NewBuffer(data)
+	d := labgob.NewDecoder(r)
+	if d.Decode(&rf.CurrentTerm) != nil ||
+		d.Decode(&rf.VotedFor) != nil ||
+		d.Decode(&rf.Log) != nil ||
+		d.Decode(&rf.commitIndex) != nil ||
+		d.Decode(&rf.lastApplied) != nil {
+		DPrintf("error reading persist state")
+		rf.Kill()
+	}
+	DPrintf("id: %d, restored: %v, commitIndex: %d, lastapplied: %d", rf.id, rf.Log, rf.commitIndex, rf.lastApplied)
 }
 
 //
 // the service using Raft (e.g. a k/v server) wants to start
-// agreement on the next command to be appended to Raft's log. if this
+// agreement on the next command to be appended to Raft's Log. if this
 // server isn't the leader, returns false. otherwise start the
 // agreement and return immediately. there is no guarantee that this
-// command will ever be committed to the Raft log, since the leader
+// command will ever be committed to the Raft Log, since the leader
 // may fail or lose an election. even if the Raft instance has been killed,
 // this function should return gracefully.
 //
@@ -180,13 +194,24 @@ func (rf *Raft) readPersist(data []byte) {
 // the leader.
 //
 func (rf *Raft) Start(command interface{}) (int, int, bool) {
-	index := -1
-	term := -1
-	isLeader := true
-
 	// Your code here (2B).
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
 
-	return index, term, isLeader
+	if rf.state != LEADER {
+		return -1, -1, false
+	}
+
+	index := rf.getLastLogIndex() + 1
+	term := rf.CurrentTerm
+	newLog := RaftLog{
+		Term:    term,
+		Command: command,
+	}
+	rf.appendLog(newLog)
+
+	DPrintfAgreement("id: %d, state: %v, term: %d, new Log appended, index: %d", rf.id, rf.state, rf.CurrentTerm, index)
+	return index, term, true
 }
 
 //
@@ -213,57 +238,58 @@ func (rf *Raft) Kill() {
 //
 func Make(peers []*labrpc.ClientEnd, id int,
 	persister *Persister, applyCh chan ApplyMsg) *Raft {
-
 	rf := &Raft{}
-
-	rf.killCh = make(chan struct{})
-
 	rf.peers = peers
-	rf.persister = persister
 	rf.id = id
 
-	rf.leaderID = NULL
-	rf.currentTerm = 0
-
-	rf.log = make([]RaftLog, 0)
-	rf.log = append(rf.log, RaftLog{Term: 0}) // first log idx is 1
-
-	rf.lastApplied = 0
-	rf.commitIndex = 0
-	rf.state = FOLLOWER
-	rf.votedFor = NULL
-
+	rf.killCh = make(chan struct{})
 	rf.heartBeatSignal = make(chan struct{})
 	rf.staleSignal = make(chan struct{})
 	rf.doneStaleSignal = make(chan struct{})
-	rf.staleState = false
-	rf.convertToFollower(0)
+	rf.isStale = false
+
+	rf.leaderID = NULL
+	rf.applyCh = applyCh
+	rf.state = FOLLOWER
+	rf.CurrentTerm = 0
+	rf.VotedFor = NULL
+	rf.lastApplied = 0
+	rf.commitIndex = 0
+	rf.Log = make([]RaftLog, 0)
+	rf.Log = append(rf.Log, RaftLog{Term: 0}) // first Log idx is 1
+
+	// initialize from state persisted before a crash
+	rf.persister = persister
+	rf.readPersist(persister.ReadRaftState())
 
 	go rf.listen()
 	// Your initialization code here (2A, 2B, 2C).
-
-	// initialize from state persisted before a crash
-	rf.readPersist(persister.ReadRaftState())
 
 	return rf
 }
 
 // state conversion
 func (rf *Raft) convertToFollower(term int) {
-	rf.currentTerm = term
+	currentTerm := rf.CurrentTerm
+	state := rf.state
+	rf.CurrentTerm = term
 	rf.state = FOLLOWER
-	DPrintf("id: %d convertToFollower, term: %d", rf.id, rf.currentTerm)
+	DPrintfElection("id: %d convertToFollower, term: %d", rf.id, rf.CurrentTerm)
+	if currentTerm != term || state != FOLLOWER {
+		rf.persist()
+	}
 }
 
 func (rf *Raft) convertToCandidate() {
 	rf.state = CANDIDATE
-	rf.currentTerm++
-	rf.votedFor = rf.id
-	DPrintf("id: %d convertToCandidate, term: %d", rf.id, rf.currentTerm)
+	rf.CurrentTerm++
+	rf.VotedFor = rf.id
+	DPrintfElection("id: %d convertToCandidate, term: %d", rf.id, rf.CurrentTerm)
+	rf.persist()
 }
 
 func (rf *Raft) convertToLeader() {
-	DPrintf("id: %d convertToLeader, term %d", rf.id, rf.currentTerm)
+	DPrintfElection("id: %d convertToLeader, term %d", rf.id, rf.CurrentTerm)
 	rf.state = LEADER
 	rf.nextIndex = make([]int, rf.numServer())
 	rf.matchIndex = make([]int, rf.numServer())
@@ -274,25 +300,46 @@ func (rf *Raft) convertToLeader() {
 
 // stale wiil change rf to follower and signal control to ignore timeout
 func (rf *Raft) stale(term int) {
-	// if rf.staleState == false {
-	// 	rf.staleState = true
+	// if rf.isStale == false {
+	// 	rf.isStale = true
 	// 	go send(rf.staleSignal) // only one signal can be effective (hopefully)
 	// 	// go sendWithCancellation(rf.staleSignal, rf.doneStaleSignal) // Must call cancel in FOLLOWER state
 	// } else {
-	// 	rf.staleState = true
+	// 	rf.isStale = true
 	// }
 
 	//can only be effective when in FOLLOWER state
 	if rf.state != FOLLOWER {
-		rf.staleState = true
+		rf.isStale = true
 		rf.convertToFollower(term)
 		go sendWithCancellation(rf.staleSignal, rf.doneStaleSignal) // Must call cancel in FOLLOWER state
+	} else {
+		rf.convertToFollower(term)
 	}
 }
 
 func (rf *Raft) unStale() {
-	rf.staleState = false
+	rf.isStale = false
 	consume(rf.staleSignal) //consume if any
 	close(rf.doneStaleSignal)
 	rf.doneStaleSignal = make(chan struct{})
+}
+
+func (rf *Raft) applyLogs(commitIndex int) {
+	rf.applyMu.Lock()
+	defer rf.applyMu.Unlock()
+	for i := rf.lastApplied + 1; i <= commitIndex; i++ {
+		rf.apply(i)
+		rf.lastApplied = i
+	}
+}
+func (rf *Raft) apply(index int) {
+	msg := ApplyMsg{
+		CommandValid: true,
+		CommandIndex: index,
+		Command:      rf.getLog(index).Command,
+	}
+	DPrintfAgreement("id: %d, term: %d, applying msg: %v, Log: %v", rf.id, rf.CurrentTerm, msg, rf.Log)
+
+	rf.applyCh <- msg
 }

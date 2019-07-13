@@ -6,10 +6,28 @@ import (
 )
 
 // Debugging
-const Debug = 1
+const (
+	DebugCommon    = 0
+	DebugElection  = 0
+	DebugAgreement = 0
+)
 
 func DPrintf(format string, a ...interface{}) (n int, err error) {
-	if Debug > 0 {
+	if DebugCommon > 0 {
+		log.Printf(format, a...)
+	}
+	return
+}
+
+func DPrintfElection(format string, a ...interface{}) (n int, err error) {
+	if DebugElection > 0 {
+		log.Printf(format, a...)
+	}
+	return
+}
+
+func DPrintfAgreement(format string, a ...interface{}) (n int, err error) {
+	if DebugAgreement > 0 {
 		log.Printf(format, a...)
 	}
 	return

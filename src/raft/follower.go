@@ -21,10 +21,10 @@ func (rf *Raft) listen() {
 			return
 		case <-rf.heartBeatSignal:
 			// heartBeat reached, restart election timeout
-			DPrintf("FOLLOWER %d has recieved heartbeat signal, term: %d", rf.id, rf.currentTerm)
+			DPrintfElection("FOLLOWER %d has recieved heartbeat signal, term: %d", rf.id, rf.CurrentTerm)
 		case <-electionTimer.C:
 			//restart election
-			DPrintf("FOLLOWER %d has waited too long, convert to candidate, term: %d", rf.id, rf.currentTerm)
+			DPrintfElection("FOLLOWER %d has waited too long, convert to candidate, term: %d", rf.id, rf.CurrentTerm)
 			go rf.leaderElection()
 			return
 		}

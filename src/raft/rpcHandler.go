@@ -30,21 +30,21 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 
-	DPrintf("id: %d received requestVote from: %d, rpc term: %d, cur Term: %d", rf.id, args.CandidateID, args.Term, rf.currentTerm)
+	DPrintfElection("id: %d received requestVote from: %d, rpc term: %d, cur Term: %d", rf.id, args.CandidateID, args.Term, rf.CurrentTerm)
 
-	if args.Term < rf.currentTerm {
-		reply.Term = rf.currentTerm
+	if args.Term < rf.CurrentTerm {
+		reply.Term = rf.CurrentTerm
 		reply.VoteGranted = false
 		return
-	} else if args.Term > rf.currentTerm {
-		DPrintf("id: %d, term smaller than rpc request", rf.id)
-		rf.votedFor = NULL
+	} else if args.Term > rf.CurrentTerm {
+		DPrintfElection("id: %d, term smaller than rpc request", rf.id)
+		rf.VotedFor = NULL
 		rf.stale(args.Term)
 	}
-	reply.Term = rf.currentTerm
+	reply.Term = rf.CurrentTerm
 
-	if (rf.votedFor == NULL || rf.votedFor == args.CandidateID) && logUpToDate(args, rf) {
-		rf.votedFor = args.CandidateID
+	if (rf.VotedFor == NULL || rf.VotedFor == args.CandidateID) && logUpToDate(args, rf) {
+		rf.VotedFor = args.CandidateID
 		reply.VoteGranted = true
 	} else {
 		reply.VoteGranted = false
@@ -113,8 +113,10 @@ type AppendEntriesArgs struct {
 //AppendEntriesReply is reply for AppendEntries
 type AppendEntriesReply struct {
 	// Your data here (2A).
-	Term     int
-	Succcess bool
+	Term         int
+	Succcess     bool
+	ConflictTerm int
+	ConflictIdx  int
 }
 
 // AppendEntries is an RPC call
@@ -122,37 +124,62 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
 
-	if args.Term < rf.currentTerm {
-		DPrintf("%d recieved appendentry from: %d, but RPC term: %d is smaller than current term: %d, ignore!", rf.id, args.LeaderID, args.Term, rf.currentTerm)
-		reply.Term = rf.currentTerm
+	DPrintf("%d recieved appendentry from: %d, RPC term: %d, current term: %d", rf.id, args.LeaderID, args.Term, rf.CurrentTerm)
+
+	reply.ConflictIdx = NULL
+	reply.ConflictTerm = NULL
+	if args.Term < rf.CurrentTerm {
+		DPrintf("%d recieved appendentry from: %d, but RPC term: %d is smaller than current term: %d, ignore!", rf.id, args.LeaderID, args.Term, rf.CurrentTerm)
+		reply.Term = rf.CurrentTerm
 		reply.Succcess = false
 		return
 	}
 
-	if rf.state == LEADER && args.Term == rf.currentTerm { // 2 leaders
+	if rf.state == LEADER && args.Term == rf.CurrentTerm { // 2 leaders
 		DPrintf("Houston, we fucked up!")
 	}
 
-	if args.Term > rf.currentTerm {
-		rf.votedFor = args.LeaderID
+	if args.Term > rf.CurrentTerm {
+		rf.VotedFor = args.LeaderID
 	}
 	if rf.state == FOLLOWER {
 		rf.convertToFollower(args.Term)
 		go func() {
-			DPrintf("%d recieved appendentry from: %d, current state: %d, rpc term: %d, current term: %d, signal heartbeat", rf.id, args.LeaderID, rf.state, args.Term, rf.currentTerm)
+			DPrintfElection("%d recieved appendentry from: %d, current state: %d, rpc term: %d, current term: %d, signal heartbeat", rf.id, args.LeaderID, rf.state, args.Term, rf.CurrentTerm)
 			send(rf.heartBeatSignal) // signal follower to reset timer
 		}()
 	} else {
 		// stale leader and candidate
-		DPrintf("%d recieved appendentry from: %d, current state: %d, rpc term: %d, current term: %d, convert to follower", rf.id, args.LeaderID, rf.state, args.Term, rf.currentTerm)
+		DPrintfElection("%d recieved appendentry from: %d, current state: %d, rpc term: %d, current term: %d, convert to follower", rf.id, args.LeaderID, rf.state, args.Term, rf.CurrentTerm)
 		rf.stale(args.Term) // change to follower and signal control to ignore timeout
 	}
 
-	reply.Term = rf.currentTerm
+	reply.Term = rf.CurrentTerm
 
-	if rf.getLog(args.PrevLogIndex).Term != args.PrevLogTerm { // Log inconsistant
-		DPrintf("Log inconsistant")
+	if rf.getLastLogIndex() < args.PrevLogIndex { // Log inconsistant
+		DPrintfAgreement("Log inconsistant")
 		reply.Succcess = false
+		reply.ConflictIdx = rf.getLastLogIndex()
+		reply.ConflictTerm = rf.getLog(rf.getLastLogIndex()).Term
+		return
+	} else if rf.getLog(args.PrevLogIndex).Term != args.PrevLogTerm {
+		DPrintfAgreement("Log inconsistant")
+		reply.Succcess = false
+		idx := args.PrevLogIndex
+		for !rf.isLogBegining(idx) && rf.getLog(idx).Term > args.PrevLogTerm {
+			// find first term smaller or equal to args.PrevLogTerm
+			idx--
+		}
+		reply.ConflictTerm = rf.getLog(idx).Term
+		for !rf.isLogBegining(idx) && rf.getLog(idx).Term == reply.ConflictTerm {
+			// find first index of this term
+			idx--
+		}
+		if rf.isLogBegining(idx) {
+			reply.ConflictIdx = idx
+		} else {
+			reply.ConflictIdx = idx + 1
+		}
 		return
 	}
 
@@ -163,15 +190,20 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 			if rf.getLog(idx).Term == args.Entries[i].Term {
 				continue
 			} else {
-				rf.log = rf.log[:idx]
+				// confict, then delete everything after idx
+				rf.Log = rf.Log[:idx]
 			}
 		}
-		rf.log = append(rf.log, args.Entries[i:]...)
+		// append
+		rf.appendLog(args.Entries[i:]...)
+		DPrintfAgreement("id %d, term : %d, commitIndex: %d, log appended", rf.id, rf.CurrentTerm, rf.commitIndex)
 		break
 	}
 
 	if args.LeaderCommit > rf.commitIndex {
 		rf.commitIndex = Min(args.LeaderCommit, rf.getLastLogIndex())
+		DPrintfAgreement("id %d, term : %d, commitIndex updated: %d", rf.id, rf.CurrentTerm, rf.commitIndex)
+		go rf.applyLogs(rf.commitIndex)
 	}
 
 	reply.Succcess = true

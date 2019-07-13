@@ -15,7 +15,7 @@ func (rf *Raft) leaderElection() {
 		resetTimer(electionTimer, electionTimeOut())
 
 		rf.mu.Lock()
-		if !rf.staleState {
+		if !rf.isStale {
 			// important, leaderElection may block at mutex because in follower state
 			// it recieves a RPC, if it become stale then leaderElection should abort
 			// otherwise we have a candidate with false term!
@@ -24,7 +24,7 @@ func (rf *Raft) leaderElection() {
 
 			lastIdx := rf.getLastLogIndex()
 			args := &RequestVoteArgs{
-				Term:         rf.currentTerm,
+				Term:         rf.CurrentTerm,
 				CandidateID:  rf.id,
 				LastLogIndex: lastIdx,
 				LastLogTerm:  rf.getLog(lastIdx).Term,
@@ -45,15 +45,15 @@ func (rf *Raft) leaderElection() {
 		case <-rf.staleSignal:
 			// if it hear from a new leader from the same term, it should also go here
 			// convert to follower mode
-			DPrintf("%d recieves stale signal at term: %d, convert to follower", rf.id, rf.currentTerm)
+			DPrintfElection("%d recieves stale signal at term: %d, convert to follower", rf.id, rf.CurrentTerm)
 			go rf.listen()
 			return
 		case <-voteCh:
-			DPrintf("id %d elected, term: %d", rf.id, rf.currentTerm)
+			DPrintf("id %d elected, term: %d", rf.id, rf.CurrentTerm)
 			voteCh = nil //gc go to work!
 			close(voteComplete)
 			rf.mu.Lock()
-			if rf.staleState {
+			if rf.isStale {
 				go rf.listen()
 				rf.mu.Unlock()
 				return
@@ -74,18 +74,18 @@ func (rf *Raft) leaderElection() {
 
 func (rf *Raft) election(args *RequestVoteArgs, server int, voteCh chan struct{}, voteComplete chan struct{}, countVote *int32) {
 	var reply RequestVoteReply
-	DPrintf("%d sending requestVote to: %d, term: %d", rf.id, server, rf.currentTerm)
+	DPrintfElection("%d sending requestVote to: %d, term: %d", rf.id, server, rf.CurrentTerm)
 	if rf.callRequestVote(server, args, &reply) { //blocking call
 		rf.mu.Lock()
-		if reply.Term > rf.currentTerm { // RPC reply has larger term
-			rf.votedFor = NULL
-			DPrintf("id: %d term smaller than rpc reply, term: %d", rf.id, rf.currentTerm)
+		if reply.Term > rf.CurrentTerm { // RPC reply has larger term
+			rf.VotedFor = NULL
+			DPrintfElection("id: %d term smaller than rpc reply, term: %d", rf.id, rf.CurrentTerm)
 			rf.stale(reply.Term)
 			rf.mu.Unlock()
 			return
 		}
 		// RPC response may come after candidate starts a new election
-		if rf.state != CANDIDATE || rf.currentTerm != args.Term {
+		if rf.state != CANDIDATE || rf.CurrentTerm != args.Term {
 			rf.mu.Unlock()
 			return
 		}
@@ -94,7 +94,7 @@ func (rf *Raft) election(args *RequestVoteArgs, server int, voteCh chan struct{}
 		// only candidate can do the following operations!
 		if reply.VoteGranted {
 			atomic.AddInt32(countVote, 1)
-			DPrintf("id：%d, countVote: %d, term: %d", rf.id, *countVote, rf.currentTerm)
+			DPrintfElection("id：%d, countVote: %d, term: %d", rf.id, *countVote, rf.CurrentTerm)
 		}
 		if atomic.LoadInt32(countVote) > int32(len(rf.peers)/2) {
 			//do something to convert to leader but prevent converting multiple times

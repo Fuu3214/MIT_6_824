@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	HEARTBEAT         int           = 150
+	HEARTBEAT         int           = 100
 	ELECTIONTIMEOUT   int           = 300
 	RAND              int           = 200
 	KEEPALIVEINTERVAL time.Duration = 2 * time.Millisecond
