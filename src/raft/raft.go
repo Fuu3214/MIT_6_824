@@ -54,9 +54,8 @@ type Raft struct {
 	peers     []*labrpc.ClientEnd // RPC end points of all peers
 	persister *Persister          // Object to hold this peer's persisted state
 
-	id       int // this peer's index into peers[]
-	leaderID int
-	state    serverState
+	id    int // this peer's index into peers[]
+	state serverState
 	// Your data here (2A, 2B, 2C).
 	// Look at the paper's Figure 2 for a description of what
 	// state a Raft server must maintain.
@@ -111,6 +110,13 @@ func (rf *Raft) GetState() (int, bool) {
 	return term, isleader
 }
 
+// GetLeaderID returns id of whom current server believes to be the leader
+func (rf *Raft) GetLeaderID() int {
+	rf.mu.Lock()
+	defer rf.mu.Unlock()
+	return rf.VotedFor
+}
+
 func (rf *Raft) appendLog(newLog ...RaftLog) {
 	rf.Log = append(rf.Log, newLog...)
 	rf.persist()
@@ -137,6 +143,10 @@ func (rf *Raft) numServer() int {
 	return len(rf.peers)
 }
 
+func (rf *Raft) GetID() int {
+	return rf.id
+}
+
 //
 // save Raft's persistent state to stable storage,
 // where it can later be retrieved after a crash and restart.
@@ -154,7 +164,7 @@ func (rf *Raft) persist() {
 	e.Encode(&rf.lastApplied)
 	data := w.Bytes()
 	rf.persister.SaveRaftState(data)
-	DPrintf("id: %d, persisted: %v, commitIndex: %d, lastapplied: %d", rf.id, rf.Log, rf.commitIndex, rf.lastApplied)
+	//DPrintf("id: %d, persisted: %v, commitIndex: %d, lastapplied: %d", rf.id, rf.Log, rf.commitIndex, rf.lastApplied)
 }
 
 //
@@ -248,7 +258,6 @@ func Make(peers []*labrpc.ClientEnd, id int,
 	rf.doneStaleSignal = make(chan struct{})
 	rf.isStale = false
 
-	rf.leaderID = NULL
 	rf.applyCh = applyCh
 	rf.state = FOLLOWER
 	rf.CurrentTerm = 0
@@ -329,17 +338,22 @@ func (rf *Raft) applyLogs(commitIndex int) {
 	rf.applyMu.Lock()
 	defer rf.applyMu.Unlock()
 	for i := rf.lastApplied + 1; i <= commitIndex; i++ {
-		rf.apply(i)
 		rf.lastApplied = i
-	}
-}
-func (rf *Raft) apply(index int) {
-	msg := ApplyMsg{
-		CommandValid: true,
-		CommandIndex: index,
-		Command:      rf.getLog(index).Command,
-	}
-	DPrintfAgreement("id: %d, term: %d, applying msg: %v, Log: %v", rf.id, rf.CurrentTerm, msg, rf.Log)
 
-	rf.applyCh <- msg
+		rf.mu.Lock()
+		command := rf.getLog(i).Command
+		rf.mu.Unlock()
+
+		msg := ApplyMsg{
+			CommandValid: true,
+			CommandIndex: i,
+			Command:      command,
+		}
+		DPrintfAgreement("id: %d, term: %d, applying msg: %v, Log: %v", rf.id, rf.CurrentTerm, msg, rf.Log)
+		select {
+		case rf.applyCh <- msg:
+		case <-rf.killCh:
+			return
+		}
+	}
 }

@@ -17,7 +17,6 @@ import "sync"
 
 // The tester generously allows solutions to complete elections in one second
 // (much more than the paper's range of timeouts).
-// ⬆ Not necessary ⬆
 const RaftElectionTimeout = 1000 * time.Millisecond
 
 // func Test200(t *testing.T) {

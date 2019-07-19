@@ -34,6 +34,13 @@ func Append(cfg *config, ck *Clerk, key string, value string) {
 	cfg.op()
 }
 
+func TestNrand(t *testing.T) {
+	for i := 0; i < 20; i++ {
+		DPrintf("%d", int(nrand())%20)
+	}
+
+}
+
 func check(cfg *config, t *testing.T, ck *Clerk, key string, value string) {
 	v := Get(cfg, ck, key)
 	if v != value {
