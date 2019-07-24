@@ -350,10 +350,6 @@ func (rf *Raft) applyLogs(commitIndex int) {
 			Command:      command,
 		}
 		DPrintfAgreement("id: %d, term: %d, applying msg: %v, Log: %v", rf.id, rf.CurrentTerm, msg, rf.Log)
-		select {
-		case rf.applyCh <- msg:
-		case <-rf.killCh:
-			return
-		}
+		rf.applyCh <- msg
 	}
 }

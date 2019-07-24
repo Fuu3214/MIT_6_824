@@ -6,13 +6,13 @@ import "sync"
 // currently it stores kv pairs as go map datas tructure in memory
 type KVDatabase struct {
 	mu      sync.RWMutex
-	storage map[string]string
+	Storage map[string]string
 }
 
 //Init a new kvdb
 func InitDB() *KVDatabase {
 	kvdb := new(KVDatabase)
-	kvdb.storage = make(map[string]string)
+	kvdb.Storage = make(map[string]string)
 	return kvdb
 }
 
@@ -20,7 +20,7 @@ func InitDB() *KVDatabase {
 func (kvdb *KVDatabase) Put(key string, value string) bool {
 	kvdb.mu.Lock()
 	defer kvdb.mu.Unlock()
-	kvdb.storage[key] = value
+	kvdb.Storage[key] = value
 	return true
 }
 
@@ -28,7 +28,7 @@ func (kvdb *KVDatabase) Put(key string, value string) bool {
 func (kvdb *KVDatabase) Get(key string) (string, bool) {
 	kvdb.mu.RLock()
 	defer kvdb.mu.RUnlock()
-	value, ok := kvdb.storage[key]
+	value, ok := kvdb.Storage[key]
 	return value, ok
 }
 
@@ -37,6 +37,6 @@ func (kvdb *KVDatabase) Get(key string) (string, bool) {
 func (kvdb *KVDatabase) Append(key string, arg string) bool {
 	kvdb.mu.Lock()
 	defer kvdb.mu.Unlock()
-	kvdb.storage[key] = kvdb.storage[key] + arg
+	kvdb.Storage[key] = kvdb.Storage[key] + arg
 	return true
 }

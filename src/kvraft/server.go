@@ -1,6 +1,7 @@
 package raftkv
 
 import (
+	"bytes"
 	"labgob"
 	"labrpc"
 	"raft"
@@ -15,7 +16,7 @@ const (
 	GET             KVCmd         = "GET"
 	APPEND          KVCmd         = "APPEND"
 	NULL            int           = raft.NULL
-	responseTimeOut time.Duration = 1 * time.Second // 3 second time out for any RPC
+	responseTimeOut time.Duration = 1 * time.Second // 1 second time out for any RPC
 )
 
 type Op struct {
@@ -36,10 +37,11 @@ type message struct { // data type that listenAndApply sends to RPC handlers
 }
 
 type KVServer struct {
-	mu      sync.Mutex
-	me      int
-	rf      *raft.Raft
-	applyCh chan raft.ApplyMsg
+	mu        sync.Mutex
+	me        int
+	rf        *raft.Raft
+	applyCh   chan raft.ApplyMsg
+	persister *raft.Persister
 
 	// index => channel of message, applytask() will write to corresponding channel of each index(Command)
 	taskMapping map[int]chan message
@@ -53,90 +55,11 @@ type KVServer struct {
 	killCh chan struct{}
 }
 
-// Get ...
-func (kv *KVServer) Get(args *GetArgs, reply *GetReply) {
-	// Your code here.
-	op := Op{
-		Command: GET,
-		Key:     args.Key,
-		Value:   "",
-		CID:     args.CID,
-		SEQ:     args.SEQ,
-	}
-	DPrintfKV("id: %d, recieved Get, op: %v", kv.rf.GetID(), op)
-	index, _, isLeader := kv.rf.Start(op)
-
-	if !isLeader {
-		reply.WrongLeader = true
-		reply.Err = ErrWrongLeader
-		return
-	}
-
-	ch := kv.subscribe(index)
-	select { // should block here, I suppose
-	case msg := <-ch:
-		DPrintfKV("id: %d, Get signaled, msg.op: %v, msg.val: %v, msg.err: %v", kv.rf.GetID(), msg.op, msg.value, msg.err)
-		if !opIsEqual(&op, msg.op) {
-			// state machine applied some different command at index
-			reply.WrongLeader = true
-			kv.unSubscribe(index)
-			return
-		}
-
-		reply.WrongLeader = false
-		reply.Value = msg.value
-		reply.Err = msg.err
-	case <-time.After(responseTimeOut):
-		reply.Err = ErrTimeOut
-	case <-kv.killCh:
-	}
-	kv.unSubscribe(index)
-}
-
-// PutAppend ...
-func (kv *KVServer) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
-	// Your code here.
-	// Your code here.
-	op := Op{
-		Command: args.Op,
-		Key:     args.Key,
-		Value:   args.Value,
-		CID:     args.CID,
-		SEQ:     args.SEQ,
-	}
-	DPrintfKV("id: %d, recieved PutAppend, op: %v", kv.rf.GetID(), op)
-	index, _, isLeader := kv.rf.Start(op)
-
-	if !isLeader {
-		reply.WrongLeader = true
-		return
-	}
-	ch := kv.subscribe(index)
-	select { // should block here, I suppose
-	case msg := <-ch:
-		DPrintfKV("id: %d, put append signaled, msg: %v", kv.rf.GetID(), msg)
-		if !opIsEqual(&op, msg.op) {
-			// state machine applied some different command at index
-			reply.WrongLeader = true
-			kv.unSubscribe(index)
-			return
-		}
-
-		reply.WrongLeader = false
-		reply.Err = msg.err
-	case <-time.After(responseTimeOut):
-		reply.Err = ErrTimeOut
-	case <-kv.killCh:
-	}
-	kv.unSubscribe(index)
-}
-
 // listen to applyCh, if any command then apply to DB and send message to corresponding channel
-func (kv *KVServer) listenAndApply() {
+func (kv *KVServer) receiveApply() {
 	for {
 		select {
 		case msg := <-kv.applyCh:
-			DPrintfKV("id: %d, listenAndApply(), msg recieved, msg: %v", kv.rf.GetID(), msg)
 			op, ok := msg.Command.(Op)
 			index := msg.CommandIndex
 			var result message
@@ -150,16 +73,16 @@ func (kv *KVServer) listenAndApply() {
 
 			kv.mu.Lock()
 			maxSeq, ok := kv.seqMapping[op.CID]
-			kv.mu.Unlock()
-			DPrintfKV("op.SEQ: %d, maxSeq: %d", op.SEQ, maxSeq)
+			DPrintfKV("id: %d, listenAndApply(), msg recieved, msg: %v, op.SEQ: %d, maxSeq: %d", kv.rf.GetID(), msg, op.SEQ, maxSeq)
 			if op.SEQ <= maxSeq && op.Command != GET {
-				if op.Command == GET {
-					result.err = ErrDuplicate
-				}
+				kv.mu.Unlock()
 				go kv.publish(index, &result)
 				continue
 			}
-			kv.seqMapping[op.CID] = op.SEQ
+			if op.SEQ > maxSeq {
+				kv.seqMapping[op.CID] = op.SEQ
+			}
+			kv.mu.Unlock()
 
 			success := false
 			switch op.Command {
@@ -179,6 +102,9 @@ func (kv *KVServer) listenAndApply() {
 			if success {
 				result.err = OK
 			}
+			kv.persist()
+
+			// DPrintfKV("ID: %d, Persisted, seqMapping: %v", kv.rf.GetID(), kv.seqMapping)
 			go kv.publish(index, &result)
 		case <-kv.killCh:
 			return
@@ -200,8 +126,8 @@ func (kv *KVServer) subscribe(index int) chan message {
 
 func (kv *KVServer) publish(index int, msg *message) {
 	kv.mu.Lock()
-	defer kv.mu.Unlock()
 	ch, ok := kv.taskMapping[index]
+	kv.mu.Unlock()
 	if ok {
 		ch <- *msg
 	}
@@ -256,10 +182,14 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 	kv.applyCh = make(chan raft.ApplyMsg)
 	kv.taskMapping = make(map[int]chan message)
 	kv.seqMapping = make(map[int64]int)
+
+	kv.persister = persister
+	kv.readPersist(persister.ReadSnapshot())
+
 	kv.rf = raft.Make(servers, me, persister, kv.applyCh)
 	kv.killCh = make(chan struct{})
 
-	go kv.listenAndApply()
+	go kv.receiveApply()
 
 	// You may need initialization code here.
 
@@ -273,13 +203,43 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 // turn off debug output from this instance.
 //
 func (kv *KVServer) Kill() {
-	kv.rf.Kill()
+	DPrintfKV(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+	DPrintfKV("id: %d, seqmapping: %v", kv.rf.GetID(), kv.seqMapping)
 	close(kv.killCh)
-	kv.mu.Lock()
-	for index, ch := range kv.taskMapping {
-		close(ch)
-		delete(kv.taskMapping, index) // unregister
-	}
-	kv.mu.Unlock()
+	kv.rf.Kill()
 	// Your code here, if desired.
+}
+
+//
+// save kv server's persistent state to stable storage,
+// where it can later be retrieved after a crash and restart.
+// see paper's Figure 2 for a description of what should be persistent.
+//
+func (kv *KVServer) persist() {
+	// Your code here (2C).
+	// Example:
+	w := new(bytes.Buffer)
+	e := labgob.NewEncoder(w)
+	e.Encode(&kv.seqMapping)
+	e.Encode(&kv.db.Storage)
+	data := w.Bytes()
+	kv.persister.SaveSnapshot(data)
+}
+
+//
+// restore previously persisted state.
+//
+func (kv *KVServer) readPersist(data []byte) {
+	if data == nil || len(data) < 1 { // bootstrap without any state?
+		return
+	}
+	// Your code here (2C).
+	// Example:
+	r := bytes.NewBuffer(data)
+	d := labgob.NewDecoder(r)
+	if d.Decode(&kv.seqMapping) != nil ||
+		d.Decode(&kv.db.Storage) != nil {
+		DPrintfKV("error reading persist state")
+		kv.Kill()
+	}
 }

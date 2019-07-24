@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	RETRYNUM    int           = 10
+	RETRYNUM    int           = 30
 	RPCINTERVAL time.Duration = 50 * time.Millisecond
 )
 
@@ -82,7 +82,7 @@ func (ck *Clerk) Get(key string) string {
 				cnt = 0
 			}
 		} else {
-			DPrintfKV("client: %v, GET call, recieved reply: %v", CID, reply)
+			// DPrintfKV("client: %v, GET call, recieved reply: %v", CID, reply)
 			if reply.WrongLeader {
 				serverID = (serverID + 1) % len(ck.servers)
 				cnt = 0
@@ -95,9 +95,12 @@ func (ck *Clerk) Get(key string) string {
 					serverID = (serverID + 1) % len(ck.servers)
 					cnt = 0
 				}
+				if reply.Err == ErrNoKey {
+					return ""
+				}
 			}
 		}
-		// time.Sleep(RPCINTERVAL)
+		time.Sleep(RPCINTERVAL)
 	}
 }
 
@@ -117,7 +120,9 @@ func (ck *Clerk) PutAppend(key string, value string, command KVCmd) {
 	cnt := 0
 	for {
 		cnt++
-		DPrintfKV("client: %d called PutAppend to server: %d, seq: %d, cnt: %d", CID, serverID, SEQ, cnt)
+		if cnt == 1 {
+			DPrintfKV("client: %d called PutAppend to server: %d, seq: %d, cnt: %d, OP: %v K: %v, V: %v", CID, serverID, SEQ, cnt, command, key, value)
+		}
 		args := PutAppendArgs{
 			Key:   key,
 			Value: value,
@@ -134,7 +139,7 @@ func (ck *Clerk) PutAppend(key string, value string, command KVCmd) {
 				cnt = 0
 			}
 		} else {
-			DPrintfKV("client: %v, %v call, recieved reply: %v", CID, command, reply)
+			// DPrintfKV("client: %v, %v call, recieved reply: %v", CID, command, reply)
 			if reply.WrongLeader {
 				serverID = (serverID + 1) % len(ck.servers)
 				cnt = 0
@@ -149,7 +154,7 @@ func (ck *Clerk) PutAppend(key string, value string, command KVCmd) {
 				}
 			}
 		}
-		// time.Sleep(RPCINTERVAL)
+		time.Sleep(RPCINTERVAL)
 	}
 }
 
