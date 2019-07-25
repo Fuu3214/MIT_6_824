@@ -80,8 +80,15 @@ func (rf *Raft) election(args *RequestVoteArgs, server int, voteCh chan struct{}
 		if reply.Term > rf.CurrentTerm { // RPC reply has larger term
 			rf.VotedFor = NULL
 			DPrintfElection("id: %d term smaller than rpc reply, term: %d", rf.id, rf.CurrentTerm)
-			rf.stale(reply.Term)
+			sendStale := false
+			if rf.state != FOLLOWER {
+				sendStale = true
+			}
+			rf.convertToFollower(reply.Term)
 			rf.mu.Unlock()
+			if sendStale {
+				rf.stale()
+			}
 			return
 		}
 		// RPC response may come after candidate starts a new election

@@ -308,7 +308,7 @@ func (rf *Raft) convertToLeader() {
 }
 
 // stale wiil change rf to follower and signal control to ignore timeout
-func (rf *Raft) stale(term int) {
+func (rf *Raft) stale() {
 	// if rf.isStale == false {
 	// 	rf.isStale = true
 	// 	go send(rf.staleSignal) // only one signal can be effective (hopefully)
@@ -318,13 +318,10 @@ func (rf *Raft) stale(term int) {
 	// }
 
 	//can only be effective when in FOLLOWER state
-	if rf.state != FOLLOWER {
-		rf.isStale = true
-		rf.convertToFollower(term)
-		go sendWithCancellation(rf.staleSignal, rf.doneStaleSignal) // Must call cancel in FOLLOWER state
-	} else {
-		rf.convertToFollower(term)
-	}
+
+	rf.isStale = true
+	sendWithCancellation(rf.staleSignal, rf.doneStaleSignal) // Must call cancel in FOLLOWER state
+
 }
 
 func (rf *Raft) unStale() {
@@ -335,14 +332,14 @@ func (rf *Raft) unStale() {
 }
 
 func (rf *Raft) applyLogs(commitIndex int) {
-	rf.applyMu.Lock()
-	defer rf.applyMu.Unlock()
+	// rf.applyMu.Lock()
+	// defer rf.applyMu.Unlock()
 	for i := rf.lastApplied + 1; i <= commitIndex; i++ {
 		rf.lastApplied = i
 
-		rf.mu.Lock()
+		// rf.mu.Lock()
 		command := rf.getLog(i).Command
-		rf.mu.Unlock()
+		// rf.mu.Unlock()
 
 		msg := ApplyMsg{
 			CommandValid: true,

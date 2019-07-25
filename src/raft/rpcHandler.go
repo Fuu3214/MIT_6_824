@@ -28,26 +28,35 @@ type RequestVoteReply struct {
 func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	// Your code here (2A, 2B).
 	rf.mu.Lock()
-	defer rf.mu.Unlock()
 
 	DPrintfElection("id: %d received requestVote from: %d, rpc term: %d, cur Term: %d", rf.id, args.CandidateID, args.Term, rf.CurrentTerm)
+	sendStale := false
+
+	reply.Term = rf.CurrentTerm
 
 	if args.Term < rf.CurrentTerm {
-		reply.Term = rf.CurrentTerm
 		reply.VoteGranted = false
+		rf.mu.Unlock()
 		return
 	} else if args.Term > rf.CurrentTerm {
 		DPrintfElection("id: %d, term smaller than rpc request", rf.id)
 		rf.VotedFor = NULL
-		rf.stale(args.Term)
+		if rf.state != FOLLOWER {
+			sendStale = true
+		}
+		rf.convertToFollower(args.Term)
 	}
-	reply.Term = rf.CurrentTerm
 
 	if (rf.VotedFor == NULL || rf.VotedFor == args.CandidateID) && logUpToDate(args, rf) {
 		rf.VotedFor = args.CandidateID
 		reply.VoteGranted = true
 	} else {
 		reply.VoteGranted = false
+	}
+
+	rf.mu.Unlock()
+	if sendStale {
+		rf.stale()
 	}
 	return
 }
@@ -122,16 +131,17 @@ type AppendEntriesReply struct {
 // AppendEntries is an RPC call
 func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply) {
 	rf.mu.Lock()
-	defer rf.mu.Unlock()
 
 	DPrintf("%d recieved appendentry from: %d, RPC term: %d, current term: %d", rf.id, args.LeaderID, args.Term, rf.CurrentTerm)
 
 	reply.ConflictIdx = NULL
 	reply.ConflictTerm = NULL
+	reply.Term = rf.CurrentTerm
+
 	if args.Term < rf.CurrentTerm {
 		DPrintf("%d recieved appendentry from: %d, but RPC term: %d is smaller than current term: %d, ignore!", rf.id, args.LeaderID, args.Term, rf.CurrentTerm)
-		reply.Term = rf.CurrentTerm
 		reply.Succcess = false
+		rf.mu.Unlock()
 		return
 	}
 
@@ -142,26 +152,16 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 	if args.Term > rf.CurrentTerm {
 		rf.VotedFor = args.LeaderID
 	}
-	if rf.state == FOLLOWER {
-		rf.convertToFollower(args.Term)
-		go func() {
-			DPrintfElection("%d recieved appendentry from: %d, current state: %d, rpc term: %d, current term: %d, signal heartbeat", rf.id, args.LeaderID, rf.state, args.Term, rf.CurrentTerm)
-			send(rf.heartBeatSignal) // signal follower to reset timer
-		}()
-	} else {
-		// stale leader and candidate
-		DPrintfElection("%d recieved appendentry from: %d, current state: %d, rpc term: %d, current term: %d, convert to follower", rf.id, args.LeaderID, rf.state, args.Term, rf.CurrentTerm)
-		rf.stale(args.Term) // change to follower and signal control to ignore timeout
-	}
 
-	reply.Term = rf.CurrentTerm
+	curState := rf.state
+
+	rf.convertToFollower(args.Term)
 
 	if rf.getLastLogIndex() < args.PrevLogIndex { // Log inconsistant
 		DPrintfAgreement("Log inconsistant")
 		reply.Succcess = false
 		reply.ConflictIdx = rf.getLastLogIndex()
 		reply.ConflictTerm = rf.getLog(rf.getLastLogIndex()).Term
-		return
 	} else if rf.getLog(args.PrevLogIndex).Term != args.PrevLogTerm {
 		DPrintfAgreement("Log inconsistant")
 		reply.Succcess = false
@@ -180,33 +180,42 @@ func (rf *Raft) AppendEntries(args *AppendEntriesArgs, reply *AppendEntriesReply
 		} else {
 			reply.ConflictIdx = idx + 1
 		}
-		return
-	}
-
-	idx := args.PrevLogIndex
-	for i := 0; i < len(args.Entries); i++ {
-		idx++
-		if idx < rf.logLen() {
-			if rf.getLog(idx).Term == args.Entries[i].Term {
-				continue
-			} else {
-				// confict, then delete everything after idx
-				rf.Log = rf.Log[:idx]
+	} else {
+		idx := args.PrevLogIndex
+		for i := 0; i < len(args.Entries); i++ {
+			idx++
+			if idx < rf.logLen() {
+				if rf.getLog(idx).Term == args.Entries[i].Term {
+					continue
+				} else {
+					// confict, then delete everything after idx
+					rf.Log = rf.Log[:idx]
+				}
 			}
+			// append
+			rf.appendLog(args.Entries[i:]...)
+			DPrintfAgreement("id %d, term : %d, commitIndex: %d, log appended", rf.id, rf.CurrentTerm, rf.commitIndex)
+			break
 		}
-		// append
-		rf.appendLog(args.Entries[i:]...)
-		DPrintfAgreement("id %d, term : %d, commitIndex: %d, log appended", rf.id, rf.CurrentTerm, rf.commitIndex)
-		break
+
+		if args.LeaderCommit > rf.commitIndex {
+			rf.commitIndex = Min(args.LeaderCommit, rf.getLastLogIndex())
+			DPrintfAgreement("id %d, term : %d, commitIndex updated: %d", rf.id, rf.CurrentTerm, rf.commitIndex)
+			rf.applyLogs(rf.commitIndex)
+		}
+
+		reply.Succcess = true
 	}
 
-	if args.LeaderCommit > rf.commitIndex {
-		rf.commitIndex = Min(args.LeaderCommit, rf.getLastLogIndex())
-		DPrintfAgreement("id %d, term : %d, commitIndex updated: %d", rf.id, rf.CurrentTerm, rf.commitIndex)
-		go rf.applyLogs(rf.commitIndex)
+	rf.mu.Unlock()
+	if curState == FOLLOWER {
+		DPrintfElection("%d recieved appendentry from: %d, current state: %d, rpc term: %d, current term: %d, signal heartbeat", rf.id, args.LeaderID, rf.state, args.Term, rf.CurrentTerm)
+		send(rf.heartBeatSignal) // signal follower to reset timer
+	} else {
+		// stale leader and candidate
+		DPrintfElection("%d recieved appendentry from: %d, current state: %d, rpc term: %d, current term: %d, convert to follower", rf.id, args.LeaderID, rf.state, args.Term, rf.CurrentTerm)
+		rf.stale() // change to follower and signal control to ignore timeout
 	}
-
-	reply.Succcess = true
 	return
 }
 

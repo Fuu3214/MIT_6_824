@@ -61,8 +61,15 @@ func (rf *Raft) sync(args *AppendEntriesArgs, server int) {
 			if reply.Term > rf.CurrentTerm { // RPC reply has larger term
 				rf.VotedFor = NULL
 				DPrintf("id: %d term smaller than rpc reply, term: %d", rf.id, rf.CurrentTerm)
-				rf.stale(reply.Term)
+				sendStale := false
+				if rf.state != FOLLOWER {
+					sendStale = true
+				}
+				rf.convertToFollower(reply.Term)
 				rf.mu.Unlock()
+				if sendStale {
+					rf.stale()
+				}
 				return
 			}
 
@@ -131,6 +138,6 @@ func (rf *Raft) updateCommitIdx() {
 	if N > rf.commitIndex && rf.getLog(N).Term == rf.CurrentTerm {
 		rf.commitIndex = N
 		DPrintfAgreement("id: %d update commitIndex to %d", rf.id, N)
-		go rf.applyLogs(rf.commitIndex)
+		rf.applyLogs(rf.commitIndex)
 	}
 }
